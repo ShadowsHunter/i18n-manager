@@ -1,0 +1,178 @@
+<!doctype html>
+<html>
+  <head>
+    <title>API Login Test</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        max-width: 800px;
+        margin: 50px auto;
+        padding: 20px;
+      }
+      .test-section {
+        margin-bottom: 30px;
+        padding: 20px;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+      }
+      button {
+        background: #3b82f6;
+        color: white;
+        border: none;
+        padding: 10px 20px;
+        border-radius: 5px;
+        cursor: pointer;
+        font-size: 14px;
+      }
+      button:hover {
+        background: #2563eb;
+      }
+      .response {
+        background: #f5f5f5;
+        padding: 15px;
+        border-radius: 5px;
+        margin-top: 10px;
+        white-space: pre-wrap;
+        font-family: monospace;
+        font-size: 12px;
+      }
+      .success {
+        color: #22c55e;
+        font-weight: bold;
+        margin-bottom: 10px;
+        display: none;
+        padding: 10px;
+        background: #dcfce7;
+        border-radius: 5px;
+      }
+      .error {
+        color: #ef4444;
+        font-weight: bold;
+        margin-bottom: 10px;
+        display: none;
+        padding: 10px;
+        background: #fee2e2;
+        border-radius: 5px;
+      }
+      input {
+        padding: 10px;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+        font-size: 14px;
+        margin-bottom: 10px;
+        width: 300px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>🔐 API Login Test</h1>
+
+    <div class="test-section">
+      <h2>Test 1: Backend Health Check</h2>
+      <button onclick="testHealth()">Test Health</button>
+      <div id="health-result" class="response"></div>
+    </div>
+
+    <div class="test-section">
+      <h2>Test 2: Login with Correct Credentials</h2>
+      <button onclick="testLogin()">Test Login</button>
+      <div id="login-result" class="response"></div>
+    </div>
+
+    <div class="test-section">
+      <h2>Test 3: Login with Wrong Credentials</h2>
+      <button onclick="testWrongCredentials()">Test Wrong Credentials</button>
+      <div id="wrong-result" class="response"></div>
+    </div>
+
+    <div class="test-section">
+      <h2>Test 4: Get Projects</h2>
+      <button onclick="testGetProjects()">Get Projects</button>
+      <div id="projects-result" class="response"></div>
+    </div>
+
+    <script>
+      const API_BASE = 'http://localhost:3001/api/v1';
+
+      function showResult(elementId, message, isSuccess) {
+        const element = document.getElementById(elementId);
+        element.textContent = JSON.stringify(JSON.parse(message), null, 2);
+
+        // Show success/error message
+        const successDiv = element.previousElementSibling;
+        const errorDiv = successDiv.previousElementSibling;
+
+        if (isSuccess) {
+          successDiv.style.display = 'block';
+          errorDiv.style.display = 'none';
+        } else {
+          successDiv.style.display = 'none';
+          errorDiv.style.display = 'block';
+        }
+      }
+
+      async function testHealth() {
+        try {
+          const response = await fetch(`${API_BASE}/health`);
+          const data = await response.json();
+          showResult('health-result', JSON.stringify(data, null, 2), true);
+        } catch (error) {
+          document.getElementById('health-result').textContent = `Error: ${error.message}`;
+        }
+      }
+
+      async function testLogin() {
+        try {
+          const response = await fetch(`${API_BASE}/auth/login`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              email: 'admin@example.com',
+              password: 'admin123',
+            }),
+          });
+          const data = await response.json();
+          showResult('login-result', JSON.stringify(data, null, 2), data.success);
+        } catch (error) {
+          document.getElementById('login-result').textContent = `Error: ${error.message}`;
+        }
+      }
+
+      async function testWrongCredentials() {
+        try {
+          const response = await fetch(`${API_BASE}/auth/login`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              email: 'wrong@email.com',
+              password: 'wrong',
+            }),
+          });
+          const data = await response.json();
+          showResult('wrong-result', JSON.stringify(data, null, 2), false);
+        } catch (error) {
+          document.getElementById('wrong-result').textContent = `Error: ${error.message}`;
+        }
+      }
+
+      async function testGetProjects() {
+        try {
+          const response = await fetch(`${API_BASE}/projects`);
+          const data = await response.json();
+          showResult('projects-result', JSON.stringify(data, null, 2), true);
+        } catch (error) {
+          document.getElementById('projects-result').textContent = `Error: ${error.message}`;
+        }
+      }
+
+      // Auto-test on page load
+      window.onload = function () {
+        testHealth();
+      };
+    </script>
+  </body>
+</html>

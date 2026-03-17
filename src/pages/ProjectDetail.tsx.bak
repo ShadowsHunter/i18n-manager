@@ -1,0 +1,394 @@
+import { useState } from 'react';
+import { DashboardLayout } from '../layouts/DashboardLayout';
+import { Button } from '../components/Button';
+import { TextEntry, mockTextEntries } from '../lib/textEntries';
+
+function ProjectDetail() {
+  const [activeTab, setActiveTab] = useState<'entries' | 'settings' | 'api-keys' | 'export'>('entries');
+  const [entries] = useState<TextEntry[]>(mockTextEntries);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filter, setFilter] = useState<'all' | 'new' | 'modified' | 'errors'>('all');
+  const [selectedEntries, setSelectedEntries] = useState<Set<string>>(new Set());
+  const [showBulkEditModal, setShowBulkEditModal] = useState(false);
+  const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false);
+
+  const handleUploadExcel = () => {
+    console.log('Upload Excel');
+  };
+
+  const handleAddEntry = () => {
+    console.log('Add entry');
+  };
+
+  const handleEditEntry = (uuid: string) => {
+    console.log('Edit entry:', uuid);
+  };
+
+  const handleDeleteEntry = (uuid: string) => {
+    console.log('Delete entry:', uuid);
+  };
+
+  const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.checked) {
+      setSelectedEntries(new Set(entries.map(entry => entry.uuid)));
+    } else {
+      setSelectedEntries(new Set());
+    }
+  };
+
+  const handleSelectEntry = (uuid: string, checked: boolean) => {
+    setSelectedEntries(prev => {
+      const newSet = new Set(prev);
+      if (checked) {
+        newSet.add(uuid);
+      } else {
+        newSet.delete(uuid);
+      }
+      return newSet;
+    });
+  };
+
+  const handleBulkDelete = () => {
+    console.log('Bulk delete:', selectedEntries);
+    setShowBulkDeleteModal(false);
+    setSelectedEntries(new Set());
+  };
+
+  const handleBulkEdit = () => {
+    console.log('Bulk edit:', selectedEntries);
+    setShowBulkEditModal(true);
+  };
+
+  const handleBulkExport = () => {
+    console.log('Bulk export:', selectedEntries);
+    // Generate export file
+    const exportData = entries.filter(entry => selectedEntries.has(entry.uuid));
+    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'entries-export.json';
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+  const handleBulkDelete = () => {
+    console.log('Bulk delete:', selectedEntries);
+  };
+
+  const filteredEntries = entries.filter(entry => {
+    const matchesSearch = entry.uuid.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         entry.cn?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         entry.en?.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    let matchesFilter = true;
+    if (filter === 'new') {
+      matchesFilter = entry.uuid.startsWith('9b1deb4d'); // Simulated "new" entries
+    } else if (filter === 'modified') {
+      matchesFilter = entry.uuid.startsWith('6ba7b810'); // Simulated "modified" entries
+    } else if (filter === 'errors') {
+      matchesFilter = false; // No errors in mock data
+    }
+    
+    return matchesSearch && matchesFilter;
+  });
+  return (
+    <>
+      <DashboardLayout currentPage="projects">
+        {/* Header */}
+        <nav className="text-sm text-secondary mb-4">
+        <a href="/" className="hover:text-cta transition-colors">Home</a>
+        {' > '}
+        <a href="/dashboard" className="hover:text-transition-colors">
+          Projects
+        </a>
+        {' > '}
+        <span className="text-text font-medium">
+          My App
+        </span>
+      </nav>
+      
+      <div className="flex items-center justify-between mb-8">
+        <h1 className="text-4xl font-bold">My App</h1>
+        <p className="text-secondary">Manage multilingual text entries</p>
+      </div>
+      
+      {/* Tab Navigation */}
+      <div className="flex gap-4 mb-8 border-b border-secondary">
+        <button
+          className={`px-4 py-3 font-medium transition-all ${
+            activeTab === 'entries'
+              ? 'border-b-2 border-cta text-cta'
+              : 'text-text hover:text-cta'
+          }`}
+          onClick={() => setActiveTab('entries')}
+        >
+          Text Entries
+        </button>
+        <button
+          className={`px-4 py-3 font-medium transition-all ${
+            activeTab === 'settings'
+              ? 'border-b-2 border-cta text-cta'
+              : 'text-text hover:text-cta'
+          }`}
+          onClick={() => setActiveTab('settings')}
+        >
+          Settings
+        </button>
+        <button
+          className={`px-4 py-3 font-medium transition-all ${
+            activeTab === 'api-keys'
+              ? 'border-b-2 border-cta text-cta'
+              : 'text-text hover:text-cta'
+          }`}
+          onClick={() => setActiveTab('api-keys')}
+        >
+          API Keys
+        </button>
+        <button
+          className={`px-4 py-3 font-medium transition-all ${
+            activeTab === 'export'
+              ? 'border-b-2 border-cta text-cta'
+              : 'text-text hover:text-cta'
+          }`}
+          onClick={() => setActiveTab('export')}
+        >
+          Export History
+        </button>
+      </div>
+      
+      {/* Search, Filter, and Actions */}
+      <div className="flex items-center justify-between mb-8 gap-4">
+        <div className="flex gap-4">
+          <input
+            type="text"
+            placeholder="Search by UUID or text..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="px-4 py-3 rounded-lg border-2 border-secondary bg-background text-text focus:border-cta focus:outline-none focus:ring-2 focus:ring-cta/20 transition-all"
+          />
+          <select
+            value={filter}
+            onChange={(e) => setFilter(e.target.value as 'all' | 'new' | 'modified' | 'errors')}
+            className="px-4 py-3 rounded-lg border-2 border-secondary bg-background text-text focus:border-cta focus:outline-none transition-all"
+          >
+            <option value="all">All entries</option>
+            <option value="new">New entries</option>
+            <option value="modified">Modified entries</option>
+            <option value="errors">Entries with errors</option>
+          </select>
+        </div>
+        <div className="flex gap-2">
+          <Button onClick={handleUploadExcel}>Upload Excel</Button>
+          <Button onClick={handleAddEntry}>+ Add Entry</Button>
+        </div>
+      </div>
+      
+      {/* Bulk Actions Toolbar */}
+      {selectedEntries.size > 0 && (
+        <div className="flex items-center gap-4 mb-4 p-4 bg-secondary/10 rounded-lg border border-secondary">
+          <span className="text-sm font-medium">
+            {selectedEntries.size} selected
+          </span>
+          <Button variant="primary" size="sm" onClick={handleBulkEdit}>
+            Edit Selected
+          </Button>
+          <Button variant="secondary" size="sm" onClick={handleBulkExport}>
+            Export Selected
+          </Button>
+          <Button variant="danger" size="sm" onClick={() => setShowBulkDeleteModal(true)}>
+            Delete Selected
+          </Button>
+        </div>
+      )}
+      
+      {/* Text Entries Table */}
+      <div className="overflow-x-auto">
+        <table className="w-full">
+          <thead>
+            <tr className="border-b border-secondary">
+              <th className="px-4 py-3 text-left">
+                <input
+                  type="checkbox"
+                  checked={selectedEntries.size === filteredEntries.length}
+                  onChange={handleSelectAll}
+                  className="w-5 h-5"
+                />
+              </th>
+              <th className="px-4 py-3 text-left">UUID (key)</th>
+              <th className="px-4 py-3 text-left">CN</th>
+              <th className="px-4 py-3 text-left">EN</th>
+              <th className="px-4 py-3 text-left">DE</th>
+              <th className="px-4 py-3 text-left">ES</th>
+              <th className="px-4 py-3 text-left">FI</th>
+              <th className="px-4 py-3 text-left">FR</th>
+              <th className="px-4 py-3 text-left">IT</th>
+              <th className="px-4 py-3 text-left">NL</th>
+              <th className="px-4 py-3 text-left">NO</th>
+              <th className="px-4 py-3 text-left">PL</th>
+              <th className="px-4 py-3 text-left">SE</th>
+              <th className="px-4 py-3 text-left">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filteredEntries.map((entry) => (
+              <tr
+                key={entry.uuid}
+                className={`border-b border-secondary hover:bg-cta/5 transition-all ${
+                  selectedEntries.has(entry.uuid) ? 'border-cta' : ''
+                }`}
+              >
+                <td className="px-4 py-3">
+                  <input
+                    type="checkbox"
+                    checked={selectedEntries.has(entry.uuid)}
+                    onChange={(e) => handleSelectEntry(entry.uuid, e.target.checked)}
+                    className="w-5 h-5"
+                  />
+                </td>
+                <td className="px-4 py-3">
+                  <code className="text-xs font-mono">
+                    {entry.uuid}
+                  </code>
+                </td>
+                <td className="px-4 py-3">{entry.cn || '-'}</td>
+                <td className="px-4 py-3">{entry.en || '-'}</td>
+                <td className="px-4 py-3">{entry.de || '-'}</td>
+                <td className="px-4 py-3">{entry.es || '-'}</td>
+                <td className="px-4 py-3">{entry.fi || '-'}</td>
+                <td className="px-4 py-3">{entry.fr || '-'}</td>
+                <td className="px-4 py-3">{entry.it || '-'}</td>
+                <td className="px-4 py-3">{entry.nl || '-'}</td>
+                <td className="px-4 py-3">{entry.no || '-'}</td>
+                <td className="px-4 py-3">{entry.pl || '-'}</td>
+                <td className="px-4 py-3">{entry.se || '-'}</td>
+                <td className="px-4 py-3">
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      onClick={() => handleEditEntry(entry.uuid)}
+                    >
+                      Edit
+                    </Button>
+                    <button
+                      onClick={() => handleDeleteEntry(entry.uuid)}
+                      className="px-4 py-2 bg-error/10 text-error border-2 border-error font-semibold rounded-lg hover:bg-error/20 transition-all"
+                    >
+                      🗑
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      
+      {/* Pagination */}
+      <div className="flex items-center justify-between mt-8">
+        <div>
+          <span className="text-sm text-secondary">
+            Showing {filteredEntries.length} entries
+          </span>
+        </div>
+        <div className="flex gap-2">
+          <Button size="sm">Previous</Button>
+          <span className="px-2 text-text">Page 1 of 1</span>
+          <Button size="sm">Next</Button>
+        </div>
+      </div>
+    </DashboardLayout>
+
+    {/* Bulk Delete Confirmation Modal */}
+    {showBulkDeleteModal && (
+      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+        <div className="bg-primary rounded-lg max-w-md w-full mx-4 p-6">
+          <h2 className="text-2xl font-bold text-text mb-4">Delete Selected Entries</h2>
+          <p className="text-sm text-secondary mb-6">
+            Are you sure you want to delete <strong>{selectedEntries.size}</strong> selected entries? This action cannot be undone.
+          </p>
+          <div className="flex gap-3">
+            <Button
+              variant="secondary"
+              size="lg"
+              className="flex-1"
+              onClick={() => setShowBulkDeleteModal(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="danger"
+              size="lg"
+              className="flex-1"
+              onClick={handleBulkDelete}
+            >
+              Delete
+            </Button>
+          </div>
+        </div>
+      </div>
+    )}
+
+    {/* Bulk Edit Modal */}
+    {showBulkEditModal && (
+      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+        <div className="bg-primary rounded-lg max-w-lg w-full mx-4 p-6">
+          <h2 className="text-2xl font-bold text-text mb-4">Edit Selected Entries</h2>
+          <p className="text-sm text-secondary mb-6">
+            Editing <strong>{selectedEntries.size}</strong> entries. Changes will be applied to all selected entries.
+          </p>
+          <div className="mb-6">
+            <label htmlFor="bulkEditField" className="block text-sm font-medium text-text mb-2">
+              Select field to edit
+            </label>
+            <select
+              id="bulkEditField"
+              className="w-full px-4 py-3 rounded-lg border-2 border-secondary bg-background text-text focus:border-cta focus:outline-none focus:ring-2 focus:ring-cta/20 transition-all mb-4"
+            >
+              <option value="cn">Chinese (CN)</option>
+              <option value="en">English (EN)</option>
+              <option value="de">German (DE)</option>
+              <option value="es">Spanish (ES)</option>
+              <option value="fi">Finnish (FI)</option>
+              <option value="fr">French (FR)</option>
+              <option value="it">Italian (IT)</option>
+              <option value="nl">Dutch (NL)</option>
+              <option value="no">Norwegian (NO)</option>
+              <option value="pl">Polish (PL)</option>
+              <option value="se">Swedish (SE)</option>
+            </select>
+            <label htmlFor="bulkEditValue" className="block text-sm font-medium text-text mb-2">
+              New value
+            </label>
+            <input
+              id="bulkEditValue"
+              type="text"
+              placeholder="Enter new translation"
+              className="w-full px-4 py-3 rounded-lg border-2 border-secondary bg-background text-text focus:border-cta focus:outline-none focus:ring-2 focus:ring-cta/20 transition-all"
+            />
+          </div>
+          <div className="flex gap-3">
+            <Button
+              variant="secondary"
+              size="lg"
+              className="flex-1"
+              onClick={() => setShowBulkEditModal(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="primary"
+              size="lg"
+              className="flex-1"
+              onClick={() => {
+                console.log('Bulk edit applied');
+                setShowBulkEditModal(false);
+                setSelectedEntries(new Set());
+              }}
+            >
+              Apply Changes
+            </Button>
+          </div>
+        </div>
+      </div>
+    )}
+  </>

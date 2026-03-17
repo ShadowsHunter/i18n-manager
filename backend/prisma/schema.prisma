@@ -1,0 +1,180 @@
+// Prisma Schema for MultiLanguageManager
+// Database: PostgreSQL (production) / SQLite (development)
+
+generator client {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// generator client {
+//   provider = "sqlite"
+//   url      = "file:./dev.db"
+// }
+
+model Project {
+  id          String    @id @default(uuid())
+  name        String    @unique
+  description String?
+  status      ProjectStatus @default(ACTIVE)
+  languages   String[]  @default([])
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  // Relations
+  entries     Entry[]
+  exports     Export[]
+
+  @@index([name, createdAt])
+  @@index([status])
+  @@index([createdAt(sort: Desc)])
+  @@map("projects")
+}
+
+model Entry {
+  uuid        String    @id @default(uuid())
+  projectId   String
+  project     Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  // Translations for each language
+  cn          String?  @db.VarChar(500)
+  en          String?  @db.VarChar(500)
+  de          String?  @db.VarChar(500)
+  es          String?  @db.VarChar(500)
+  fi          String?  @db.VarChar(500)
+  fr          String?  @db.VarChar(500)
+  it          String?  @db.VarChar(500)
+  nl          String?  @db.VarChar(500)
+  no          String?  @db.VarChar(500)
+  pl          String?  @db.VarChar(500)
+  se          String?  @db.VarChar(500)
+
+  // Metadata
+  status      EntryStatus @default(NEW)
+  error       String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([projectId, uuid])
+  @@index([cn, en])
+  @@index([de, es])
+  @@index([fi, fr])
+  @@index([status])
+  @@index([createdAt(sort: Desc)])
+  @@map("entries")
+}
+
+model Export {
+  id          String        @id @default(uuid())
+  projectId   String
+  project     Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  // Configuration
+  platforms   ExportPlatform[]
+  languages   String[]
+
+  // Result
+  url         String?       // Download URL (could be temporary or permanent)
+  status      ExportStatus @default(COMPLETED)
+  errorMessage String?
+
+  // Metadata
+  createdBy   String?       // User ID or API key ID
+  createdAt   DateTime      @default(now())
+
+  @@index([projectId, createdAt(sort: Desc)])
+  @@index([status])
+  @@index([createdAt(sort: Desc)])
+  @@map("exports")
+}
+
+model ApiKey {
+  id          String       @id @default(uuid())
+  name        String
+  keyHash    String       // Bcrypt hash of the actual key
+  prefix      String       // First 8 characters for display
+  suffix      String       // Last 4 characters for display
+
+  // Usage tracking
+  lastUsed    DateTime?
+  usageCount  Int          @default(0)
+
+  // Status
+  status      ApiKeyStatus @default(ACTIVE)
+  expiresAt   DateTime?
+
+  // Metadata
+  createdBy   String?       // User ID
+  createdAt   DateTime     @default(now())
+  revokedAt   DateTime?
+
+  @@index([status])
+  @@index([createdAt(sort: Desc)])
+  @@index([expiresAt])
+  @@map("api_keys")
+}
+
+model User {
+  id        String    @id @default(uuid())
+  email     String    @unique
+  password  String    // Bcrypt hash
+  name      String?
+
+  // Status
+  isActive  Boolean   @default(true)
+
+  // Metadata
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([email])
+  @@index([isActive])
+  @@map("users")
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  token     String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([token])
+  @@index([userId, expiresAt])
+  @@map("refresh_tokens")
+}
+
+// Enums
+enum ProjectStatus {
+  ACTIVE
+  ARCHIVED
+  DELETED
+}
+
+enum EntryStatus {
+  NEW
+  MODIFIED
+  DELETED
+  ERROR
+}
+
+enum ExportPlatform {
+  IOS
+  ANDROID
+  WEB
+  ALL
+}
+
+enum ExportStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+enum ApiKeyStatus {
+  ACTIVE
+  REVOKED
+  EXPIRED
+}

@@ -1,0 +1,383 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>登录问题诊断工具</title>
+    <style>
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 20px;
+        background: #f5f5f5;
+      }
+      .container {
+        background: white;
+        border-radius: 10px;
+        padding: 30px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+      }
+      h1 {
+        color: #333;
+        margin-bottom: 30px;
+      }
+      .section {
+        margin-bottom: 30px;
+        padding: 20px;
+        border: 1px solid #e0e0e0;
+        border-radius: 5px;
+      }
+      .section h2 {
+        margin-top: 0;
+        color: #555;
+      }
+      button {
+        background: #3b82f6;
+        color: white;
+        border: none;
+        padding: 12px 24px;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 14px;
+        font-weight: 500;
+        margin: 5px;
+      }
+      button:hover {
+        background: #2563eb;
+      }
+      button:disabled {
+        background: #9ca3af;
+        cursor: not-allowed;
+      }
+      .result {
+        margin-top: 15px;
+        padding: 15px;
+        border-radius: 5px;
+        font-family: 'Courier New', monospace;
+        font-size: 13px;
+        white-space: pre-wrap;
+        word-break: break-all;
+      }
+      .result.success {
+        background: #dcfce7;
+        border: 1px solid #22c55e;
+        color: #166534;
+      }
+      .result.error {
+        background: #fee2e2;
+        border: 1px solid #ef4444;
+        color: #b91c1c;
+      }
+      .result.warning {
+        background: #fef9c3;
+        border: 1px solid #f59e0b;
+        color: #b45309;
+      }
+      .result.info {
+        background: #dbeafe;
+        border: 1px solid #3b82f6;
+        color: #1e40af;
+      }
+      .status-icon {
+        font-size: 24px;
+        margin-right: 10px;
+      }
+      .status-item {
+        display: flex;
+        align-items: center;
+        margin: 10px 0;
+        padding: 10px;
+        background: #f9fafb;
+        border-radius: 5px;
+      }
+      .copy-btn {
+        background: #64748b;
+        color: white;
+        border: none;
+        padding: 8px 16px;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 12px;
+        margin-left: auto;
+      }
+      .copy-btn:hover {
+        background: #475569;
+      }
+      .solution {
+        background: #f0f9ff;
+        border-left: 4px solid #3b82f6;
+        padding: 20px;
+        margin: 20px 0;
+      }
+      .solution h3 {
+        margin-top: 0;
+        color: #1e40af;
+      }
+      .solution ol {
+        margin: 10px 0;
+        padding-left: 20px;
+      }
+      .solution li {
+        margin: 10px 0;
+        line-height: 1.6;
+      }
+      .solution code {
+        background: #1f2937;
+        color: #e5e7eb;
+        padding: 2px 6px;
+        border-radius: 3px;
+        font-family: 'Courier New', monospace;
+      }
+      .token-display {
+        word-break: break-all;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>🔍 401 错误诊断与解决</h1>
+
+      <div class="section">
+        <h2>步骤1：检查 localStorage 状态</h2>
+        <button onclick="checkLocalStorage()">检查 localStorage</button>
+        <div id="localstorage-result" class="result"></div>
+      </div>
+
+      <div class="section">
+        <h2>步骤2：清除旧的认证数据</h2>
+        <button onclick="clearAuthData()">清除所有认证数据</button>
+        <div id="clear-result" class="result"></div>
+      </div>
+
+      <div class="section">
+        <h2>步骤3：测试后端API</h2>
+        <button onclick="testBackendAPI()">测试后端</button>
+        <div id="api-result" class="result"></div>
+      </div>
+
+      <div class="section">
+        <h2>步骤4：重新登录</h2>
+        <div style="display: flex; gap: 10px; margin-bottom: 15px">
+          <input
+            type="email"
+            id="login-email"
+            placeholder="admin@example.com"
+            value="admin@example.com"
+            style="flex: 1; padding: 10px; border: 1px solid #ddd; border-radius: 5px"
+          />
+          <input
+            type="password"
+            id="login-password"
+            placeholder="admin123"
+            value="admin123"
+            style="flex: 1; padding: 10px; border: 1px solid #ddd; border-radius: 5px"
+          />
+        </div>
+        <button onclick="performLogin()">重新登录</button>
+        <div id="login-result" class="result"></div>
+      </div>
+
+      <div id="solution-section" style="display: none">
+        <div class="solution">
+          <h3>✅ 解决方案</h3>
+          <ol>
+            <li>点击 <strong>检查 localStorage</strong> 按钮查看当前存储的数据</li>
+            <li>如果有旧的 token 或错误数据，点击 <strong>清除所有认证数据</strong></li>
+            <li>点击 <strong>重新登录</strong> 获取新的有效 token</li>
+            <li>刷新页面，应该可以正常访问了</li>
+          </ol>
+        </div>
+      </div>
+    </div>
+
+    <script>
+              const API_BASE = 'http://localhost:3001/api/v1';
+
+              function showResult(elementId, message, type = 'info') {
+                  const element = document.getElementById(elementId);
+                  element.className = `result ${type}`;
+                  element.textContent = message;
+              }
+
+              async function checkLocalStorage() {
+                  try {
+                      const results = [];
+
+                      // 检查 token
+                      const token = localStorage.getItem('token');
+                      if (token) {
+                          results.push(`✅ Token 存在: ${token.substring(0, 20)}...`);
+                          results.push(`长度: ${token.length} 字符`);
+                      } else {
+                          results.push('⚠️ Token 不存在');
+                      }
+
+                      // 检查 user
+                      const userStr = localStorage.getItem('user');
+                      if (userStr) {
+                          try {
+                              const user = JSON.parse(userStr);
+                              results.push(`✅ 用户数据存在:`);
+                              results.push(`  - Email: ${user.email}`);
+                              results.push(`  - Name: ${user.name}`);
+                              results.push(`  - Active: ${user.active}`);
+                              results.push(`  - ID: ${user.id}`);
+                          } catch (e) {
+                              results.push(`❌ 用户数据格式错误: ${e.message}`);
+                          }
+                      } else {
+                          results.push('⚠️ 用户数据不存在');
+                      }
+
+                      // 检查其他可能的键
+                      const allKeys = Object.keys(localStorage);
+                      results.push(`\n所有存储的键: ${allKeys.join(', ')}`);
+
+                      // 判断问题
+                      let hasIssue = false;
+                      let issueType = '';
+
+                      if (token && !userStr) {
+                        hasIssue = true;
+                        issueType = 'Token 存在但用户数据缺失';
+                        results.push(`\n⚠️ 问题: ${issueType}`);
+                      } else if (token && userStr) {
+                        // Token 和用户数据都存在，检查有效性
+                        try {
+                          const user = JSON.parse(userStr);
+                          if (!user || !user.email) {
+                            hasIssue = true;
+                            issueType = 'Token 存在但用户数据无效';
+                            results.push(`\n⚠️ 问题: ${issueType}`);
+                          } else {
+                            hasIssue = false;
+                          }
+                        } catch (e) {
+                          hasIssue = true;
+                          issueType = '用户数据格式错误: ' + e.message;
+                          results.push(`\n❌ 用户数据格式错误: ${e.message}`);
+                        }
+                      } else if (userStr) {
+                        // 用户数据存在但没有token
+                        hasIssue = true;
+                        issueType = '用户数据存在但Token缺失';
+                        results.push(`\n⚠️ 问题: ${issueType}`);
+                      } else {
+                        // 都不存在，正常
+                        results.push('✅ localStorage 状态正常，无认证数据');
+                      }
+
+                      showResult('localstorage-result', results.join('\n'), hasIssue ? 'warning' : 'success');
+              async function clearAuthData() {
+                  try {
+                      // 清除 token
+                      localStorage.removeItem('token');
+
+                      // 清除 user
+                      localStorage.removeItem('user');
+
+                      showResult('clear-result', '✅ 所有认证数据已清除！\n\n现在请点击"重新登录"按钮获取新的 token。', 'success');
+
+                      // 3秒后自动显示登录按钮部分
+                      setTimeout(() => {
+                          document.querySelector('#section-4').scrollIntoView({ behavior: 'smooth' });
+                      }, 500);
+                  } catch (error) {
+                      showResult('clear-result', `❌ 清除失败: ${error.message}`, 'error');
+                  }
+              }
+
+              async function testBackendAPI() {
+                  try {
+                      const results = [];
+
+                      // 测试1: 健康检查（不需要认证）
+                      const healthRes = await fetch(`${API_BASE}/health`);
+                      const healthData = await healthRes.json();
+                      results.push(`✅ 健康检查: ${healthData.status}`);
+
+                      // 测试2: 获取项目（test-server.js 不需要认证）
+                      const projectsRes = await fetch(`${API_BASE}/projects`);
+                      const projectsData = await projectsRes.json();
+                      results.push(`✅ 获取项目: ${projectsData.success ? '成功' : '失败'}`);
+
+                      if (projectsData.success) {
+                          results.push(`项目数量: ${projectsData.data.total || projectsData.data.projects?.length || 0}`);
+                      }
+
+                      showResult('api-result', results.join('\n'), 'success');
+                  } catch (error) {
+                      showResult('api-result', `❌ 测试失败: ${error.message}\n\n请确保后端服务器正在运行。`, 'error');
+                  }
+              }
+
+              async function performLogin() {
+                  const email = document.getElementById('login-email').value;
+                  const password = document.getElementById('login-password').value;
+
+                  if (!email || !password) {
+                      showResult('login-result', '⚠️ 请填写邮箱和密码', 'warning');
+                      return;
+                  }
+
+                  showResult('login-result', '⏳ 登录中...', 'info');
+
+                  try {
+                      const response = await fetch(`${API_BASE}/auth/login`, {
+                          method: 'POST',
+                          headers: {
+                              'Content-Type': 'application/json',
+                          },
+                          body: JSON.stringify({
+                              email: email,
+                              password: password
+                          })
+                      });
+
+                      const data = await response.json();
+
+                      if (data.success && data.data) {
+                          const { token, user } = data.data;
+
+                          // 保存到 localStorage
+                          localStorage.setItem('token', token);
+                          localStorage.setItem('user', JSON.stringify(user));
+
+                          const result = `✅ 登录成功！
+
+      Token (前50字符): ${token.substring(0, 50)}...
+
+      用户信息:
+        - Email: ${user.email}
+        - Name: ${user.name}
+        - ID: ${user.id}
+        - Active: ${user.active}
+
+      建议:
+      1. 刷新页面访问应用
+      2. Token 有效期: 7 天`;
+
+                          showResult('login-result', result, 'success');
+
+                          // 5秒后自动跳转到前端
+                          setTimeout(() => {
+                              window.location.href = 'http://localhost:5173/dashboard';
+                          }, 3000);
+                      } else {
+                          showResult('login-result', `❌ 登录失败: ${data.error}`, 'error');
+                      }
+                  } catch (error) {
+                      showResult('login-result', `❌ 登录请求失败: ${error.message}`, 'error');
+                  }
+              }
+
+              // 页面加载时自动检查
+              window.addEventListener('load', function() {
+                  setTimeout(() => {
+                      checkLocalStorage();
+                  }, 500);
+              });
+    </script>
+  </body>
+</html>
