@@ -83,6 +83,14 @@ function App() {
             }
           />
           <Route
+            path="/upload"
+            element={
+              <PrivateRoute>
+                <UploadExcel />
+              </PrivateRoute>
+            }
+          />
+          <Route
             path="/settings"
             element={
               <PrivateRoute>
@@ -95,6 +103,14 @@ function App() {
             element={
               <PrivateRoute>
                 <ApiKeys />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/export"
+            element={
+              <PrivateRoute>
+                <ExportDownload />
               </PrivateRoute>
             }
           />

@@ -35,3 +35,4 @@ frontend.log
 
 # Temporary files
 nul
+node_modules

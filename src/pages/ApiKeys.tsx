@@ -56,9 +56,9 @@ function ApiKeys() {
 
   const handleRevokeKey = (keyId: string) => {
     console.log('Revoking key:', keyId);
-    setApiKeys(apiKeys.map((key) =>
-      key.id === keyId ? { ...key, status: 'revoked' as const } : key
-    ));
+    setApiKeys(
+      apiKeys.map((key) => (key.id === keyId ? { ...key, status: 'revoked' as const } : key))
+    );
   };
 
   const handleCopyKey = (keyId: string, key: string) => {
@@ -85,12 +85,14 @@ function ApiKeys() {
   };
 
   return (
-    <DashboardLayout currentPage="projects">
-      <div className="max-w-6xl">
+    <DashboardLayout currentPage="api-keys">
+      <div className="max-w-6xl mx-auto py-8">
         <div className="mb-8 flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold text-text mb-2">API Keys</h1>
-            <p className="text-secondary">Manage your API keys for accessing the MultiLanguageManager API</p>
+            <p className="text-secondary">
+              Manage your API keys for accessing the MultiLanguageManager API
+            </p>
           </div>
           <Button variant="primary" size="lg" onClick={() => setShowCreateModal(true)}>
             + Generate New Key
@@ -104,9 +106,9 @@ function ApiKeys() {
             <div>
               <h3 className="font-semibold text-text mb-1">About API Keys</h3>
               <p className="text-sm text-secondary">
-                API keys are used to authenticate requests to the MultiLanguageManager API.
-                Keep them secure and never share them in public repositories.
-                Rate limit: 100 requests/minute per key.
+                API keys are used to authenticate requests to the MultiLanguageManager API. Keep
+                them secure and never share them in public repositories. Rate limit: 100
+                requests/minute per key.
               </p>
             </div>
           </div>
@@ -128,7 +130,10 @@ function ApiKeys() {
             </thead>
             <tbody>
               {apiKeys.map((apiKey) => (
-                <tr key={apiKey.id} className="border-b border-secondary hover:bg-cta/5 transition-colors">
+                <tr
+                  key={apiKey.id}
+                  className="border-b border-secondary hover:bg-cta/5 transition-colors"
+                >
                   <td className="px-6 py-4">
                     <div className="font-medium text-text">{apiKey.name}</div>
                   </td>
@@ -182,7 +187,9 @@ function ApiKeys() {
           <div className="text-center py-12">
             <div className="text-6xl mb-4">🔑</div>
             <h3 className="text-xl font-semibold text-text mb-2">No API Keys Yet</h3>
-            <p className="text-secondary mb-6">Create your first API key to start using the MultiLanguageManager API</p>
+            <p className="text-secondary mb-6">
+              Create your first API key to start using the MultiLanguageManager API
+            </p>
             <Button variant="primary" onClick={() => setShowCreateModal(true)}>
               Generate API Key
             </Button>

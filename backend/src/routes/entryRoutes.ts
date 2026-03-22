@@ -16,7 +16,9 @@ const router = Router();
 // Mock data for development (replace with database queries)
 const mockEntries: any[] = [
   {
+    id: '550e8400-e29b-41d4-a716-446655440000',
     uuid: '550e8400-e29b-41d4-a716-446655440000',
+    key: 'welcome_message',
     projectId: '550e8400-e29b-41d4-a716-446655440000',
     cn: '确定',
     en: 'OK',
@@ -34,7 +36,9 @@ const mockEntries: any[] = [
     updatedAt: '2026-02-20T10:00:00Z',
   },
   {
+    id: '6ba7b810-9dad-11d1-80b7-44d45553535000',
     uuid: '6ba7b810-9dad-11d1-80b7-44d45553535000',
+    key: 'cancel_button',
     projectId: '550e8400-e29b-41d4-a716-446655440000',
     cn: '取消',
     en: 'Cancel',
@@ -52,7 +56,9 @@ const mockEntries: any[] = [
     updatedAt: '2026-02-28T16:45:00Z',
   },
   {
+    id: '9b1deb4d-3b7d-4b77-c9df-08e877f1ef',
     uuid: '9b1deb4d-3b7d-4b77-c9df-08e877f1ef',
+    key: 'settings_button',
     projectId: '550e8400-e29b-41d4-a716-446655440000',
     cn: '设置',
     en: 'Settings',
@@ -104,15 +110,18 @@ router.get('/:projectId/entries', (req: Request, res: Response) => {
   const total = entries.length;
   const paginatedEntries = entries.slice(offset, offset + limitNum);
 
-  return sendResponse(res, {
-    data: paginatedEntries,
-    pagination: {
-      page: pageNum,
-      limit: limitNum,
-      total,
-      totalPages: Math.ceil(total / limitNum),
-    },
-  });
+  return sendResponse(
+    res,
+    successResponse({
+      entries: paginatedEntries,
+      pagination: {
+        page: pageNum,
+        limit: limitNum,
+        total,
+        totalPages: Math.ceil(total / limitNum),
+      },
+    })
+  );
 });
 
 // GET /api/v1/projects/:projectId/entries/:uuid - Get entry by UUID
@@ -130,10 +139,10 @@ router.get('/:projectId/entries/:uuid', (req: Request, res: Response) => {
 // POST /api/v1/projects/:projectId/entries - Create entry
 router.post('/:projectId/entries', (req: Request, res: Response) => {
   const { projectId } = req.params;
-  const { cn, en, de, es, fi, fr, it, nl, no, pl, se } = req.body;
+  const { cn, en, de, es, fi, fr, it, nl, no, pl, se, da } = req.body;
 
   // Validation - at least one translation is required
-  const hasTranslation = cn || en || de || es || fi || fr || it || nl || no || pl || se;
+  const hasTranslation = cn || en || de || es || fi || fr || it || nl || no || pl || se || da;
   if (!hasTranslation) {
     return sendResponse(
       res,
@@ -159,6 +168,7 @@ router.post('/:projectId/entries', (req: Request, res: Response) => {
     no: no || null,
     pl: pl || null,
     se: se || null,
+    da: da || null,
     status: 'NEW',
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),

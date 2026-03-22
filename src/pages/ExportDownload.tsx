@@ -1,292 +1,432 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import JSZip from 'jszip';
 import { DashboardLayout } from '../layouts/DashboardLayout';
 import { Button } from '../components/Button';
+import { Card } from '../components/Card';
 import { Badge } from '../components/Badge';
+import { Alert } from '../components/Alert';
+import { Loading } from '../components/Loading';
+import { useToast } from '../components/Toast';
+import { ArrowLeft, Download, Loader2, CheckCircle, FileText } from 'lucide-react';
+import { projectApi, entryApi } from '../services/api';
+import { Project, Entry } from '../services/apiClient';
 
-interface ExportHistory {
-  id: string;
-  timestamp: string;
-  project: string;
-  platform: 'iOS' | 'Android' | 'Web';
-  language: string;
-  version: string;
+interface ExportStatus {
+  step: 'idle' | 'loading' | 'exporting' | 'success' | 'error';
+  progress: number;
+  error?: string;
 }
 
 function ExportDownload() {
-  const [selectedProject, setSelectedProject] = useState('my-app');
-  const [selectedPlatforms, setSelectedPlatforms] = useState<Set<'iOS' | 'Android' | 'Web'>>(new Set(['iOS', 'Android', 'Web']));
-  const [selectedLanguages, setSelectedLanguages] = useState<Set<string>>(new Set(['CN', 'DA', 'DE', 'EN', 'ES', 'FI', 'FR', 'IT', 'NL', 'NO', 'PL', 'SE']));
+  const navigate = useNavigate();
+  const toast = useToast();
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [selectedProjectId, setSelectedProjectId] = useState<string>('');
+  const [isLoadingProjects, setIsLoadingProjects] = useState(true);
+  const [entries, setEntries] = useState<Entry[]>([]);
+  const [isLoadingEntries, setIsLoadingEntries] = useState(false);
+  const [exportStatus, setExportStatus] = useState<ExportStatus>({
+    step: 'idle',
+    progress: 0,
+  });
 
-  const [exportHistory] = useState<ExportHistory[]>([
-    {
-      id: '1',
-      timestamp: '2026-03-01 10:30:00',
-      project: 'My App',
-      platform: 'iOS',
-      language: 'All',
-      version: 'v1.0.0',
-    },
-    {
-      id: '2',
-      timestamp: '2026-02-28 15:45:00',
-      project: 'My App',
-      platform: 'Android',
-      language: 'EN',
-      version: 'v1.0.0',
-    },
-    {
-      id: '3',
-      timestamp: '2026-02-28 15:00:00',
-      project: 'My App',
-      platform: 'Web',
-      language: 'All',
-      version: 'v1.0.0',
-    },
-  ]);
-
-  const availableProjects = [
-    { id: 'my-app', name: 'My App' },
-    { id: 'dashboard', name: 'Dashboard' },
-  ];
+  // 导出选项
+  const [selectedLanguages, setSelectedLanguages] = useState<Set<string>>(
+    new Set(['CN', 'EN', 'DE', 'ES', 'FI', 'FR', 'IT', 'NL', 'NO', 'PL', 'SE', 'DA'])
+  );
 
   const availableLanguages = [
-    'CN', 'DA', 'DE', 'EN', 'ES', 'FI', 'FR', 'IT', 'NL', 'NO', 'PL', 'SE',
+    { code: 'CN', name: 'Chinese' },
+    { code: 'EN', name: 'English' },
+    { code: 'DE', name: 'German' },
+    { code: 'ES', name: 'Spanish' },
+    { code: 'FI', name: 'Finnish' },
+    { code: 'FR', name: 'French' },
+    { code: 'IT', name: 'Italian' },
+    { code: 'NL', name: 'Dutch' },
+    { code: 'NO', name: 'Norwegian' },
+    { code: 'PL', name: 'Polish' },
+    { code: 'SE', name: 'Swedish' },
+    { code: 'DA', name: 'Danish' },
   ];
 
-  const availablePlatforms = [
-    { id: 'ios', name: 'iOS (.strings)' },
-    { id: 'android', name: 'Android (strings.xml)' },
-    { id: 'web', name: 'Web (JSON)' },
-  ];
+  // 加载项目列表
+  useEffect(() => {
+    loadProjects();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  const handlePlatformToggle = (platform: 'iOS' | 'Android' | 'Web') => {
-    setSelectedPlatforms(prev => {
+  // 当选择项目时，加载条目
+  useEffect(() => {
+    if (selectedProjectId) {
+      loadEntries();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedProjectId]);
+
+  const loadProjects = async () => {
+    try {
+      setIsLoadingProjects(true);
+      const response = await projectApi.getProjects();
+      if (response.success && response.data) {
+        const projectList =
+          (response.data as any)?.projects ||
+          (response.data as any)?.entries ||
+          (response.data as any)?.data ||
+          (Array.isArray(response.data) ? response.data : []);
+        setProjects(Array.isArray(projectList) ? projectList : []);
+        if (projectList.length > 0) {
+          setSelectedProjectId(projectList[0].id);
+        }
+      }
+    } catch (err) {
+      console.error('Failed to load projects:', err);
+      toast.showToast({
+        type: 'error',
+        message: 'Failed to load projects',
+      });
+    } finally {
+      setIsLoadingProjects(false);
+    }
+  };
+
+  const loadEntries = async () => {
+    if (!selectedProjectId) return;
+
+    try {
+      setIsLoadingEntries(true);
+      const response = await entryApi.getEntries(selectedProjectId);
+      if (response.success && response.data) {
+        const entryList =
+          (response.data as any)?.entries ||
+          (response.data as any)?.data ||
+          (Array.isArray(response.data) ? response.data : []);
+        setEntries(Array.isArray(entryList) ? entryList : []);
+      }
+    } catch (err) {
+      console.error('Failed to load entries:', err);
+      toast.showToast({
+        type: 'error',
+        message: 'Failed to load entries',
+      });
+    } finally {
+      setIsLoadingEntries(false);
+    }
+  };
+
+  const handleLanguageToggle = (lang: string) => {
+    setSelectedLanguages((prev) => {
       const newSet = new Set(prev);
-      if (newSet.has(platform)) {
-        newSet.delete(platform);
+      if (newSet.has(lang)) {
+        newSet.delete(lang);
       } else {
-        newSet.add(platform);
+        newSet.add(lang);
       }
       return newSet;
     });
   };
 
-  const handleLanguageToggle = (language: string) => {
-    setSelectedLanguages(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(language)) {
-        newSet.delete(language);
-      } else {
-        newSet.add(language);
+  const handleSelectAllLanguages = () => {
+    setSelectedLanguages(new Set(availableLanguages.map((l) => l.code)));
+  };
+
+  const handleExport = async () => {
+    if (!selectedProjectId) {
+      toast.showToast({
+        type: 'error',
+        message: 'Please select a project first',
+      });
+      return;
+    }
+
+    if (selectedLanguages.size === 0) {
+      toast.showToast({
+        type: 'error',
+        message: 'Please select at least one language',
+      });
+      return;
+    }
+
+    if (entries.length === 0) {
+      toast.showToast({
+        type: 'error',
+        message: 'No entries to export',
+      });
+      return;
+    }
+
+    setExportStatus({ step: 'exporting', progress: 0 });
+
+    try {
+      const languages = Array.from(selectedLanguages).map((l) => l.toLowerCase());
+      const zip = new JSZip();
+      const folder = zip.folder('translations');
+
+      if (!folder) {
+        throw new Error('Failed to create folder in ZIP');
       }
-      return newSet;
-    });
+
+      // 为每个选中的语言创建 JSON 文件
+      languages.forEach((lang) => {
+        const langData: Record<string, string> = {};
+        entries.forEach((entry) => {
+          const value = entry[lang as keyof Entry];
+          if (typeof value === 'string' && value) {
+            langData[entry.key] = value;
+          }
+        });
+
+        // 只有当该语言有数据时才添加文件
+        if (Object.keys(langData).length > 0) {
+          folder.file(`${lang}.json`, JSON.stringify(langData, null, 2));
+        }
+      });
+
+      // 生成 ZIP 文件
+      const content = await zip.generateAsync({ type: 'blob' });
+
+      // 创建下载链接
+      const url = URL.createObjectURL(content);
+      const link = document.createElement('a');
+      link.href = url;
+
+      const selectedProject = projects.find((p) => p.id === selectedProjectId);
+      const projectName = selectedProject?.name || 'translations';
+      link.download = `${projectName}_${new Date().toISOString().split('T')[0]}.zip`;
+
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      setExportStatus({ step: 'success', progress: 100 });
+
+      toast.showToast({
+        type: 'success',
+        message: `Successfully exported ${languages.length} language files`,
+      });
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Export failed';
+      setExportStatus({ step: 'error', progress: 0, error: errorMessage });
+      toast.showToast({
+        type: 'error',
+        message: errorMessage,
+      });
+    }
   };
 
-  const handleDownload = () => {
-    console.log('Download files:', {
-      project: selectedProject,
-      platforms: Array.from(selectedPlatforms),
-      languages: Array.from(selectedLanguages),
-    });
+  const handleReset = () => {
+    setExportStatus({ step: 'idle', progress: 0 });
   };
 
-  const handleDownloadHistory = (exportId: string) => {
-    console.log('Download export:', exportId);
-  };
+  if (isLoadingProjects) {
+    return (
+      <DashboardLayout currentPage="export">
+        <div className="flex items-center justify-center py-12">
+          <Loading />
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
-    <DashboardLayout currentPage="projects">
-      {/* Header */}
-      <nav className="text-sm text-secondary mb-4">
-        <a href="/" className="hover:text-cta transition-colors">Home</a>
-        {' > '}
-        <a href="/dashboard" className="hover:text-transition-colors">
-          Projects
-        </a>
-        {' > '}
-        <span className="text-text font-medium">
-          My App
-        </span>
-        {' > '}
-        <span className="text-text">Export</span>
-      </nav>
-      
-      <h1 className="text-4xl font-bold mb-8">Export / Download</h1>
-      
-      {/* Export Configuration */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
-        {/* Left Column - Selection */}
-        <div className="bg-background border border-secondary rounded-lg p-6">
-          <h2 className="text-2xl font-semibold mb-6">Export Configuration</h2>
-          
-          {/* Project Selection */}
-          <div className="mb-6">
-            <label className="block text-sm font-medium mb-2">
-              Select Project
-            </label>
+    <DashboardLayout currentPage="export">
+      <div className="max-w-6xl mx-auto py-8">
+        {/* Header */}
+        <div className="flex items-center gap-4 mb-8">
+          <Button variant="secondary" size="sm" onClick={() => navigate('/dashboard')}>
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Back
+          </Button>
+          <div>
+            <h1 className="text-3xl font-bold text-text">Export Translations</h1>
+            <p className="text-text-secondary">Export your multilingual translations as ZIP file</p>
+          </div>
+        </div>
+
+        {/* Project Selection */}
+        <Card className="mb-8">
+          <h2 className="text-xl font-semibold mb-4">Select Project</h2>
+          {projects.length === 0 ? (
+            <Alert type="warning">
+              No projects available. Please create a project first.
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={() => navigate('/dashboard')}
+                className="ml-4"
+              >
+                Create Project
+              </Button>
+            </Alert>
+          ) : (
             <select
-              value={selectedProject}
-              onChange={(e) => setSelectedProject(e.target.value)}
+              value={selectedProjectId}
+              onChange={(e) => setSelectedProjectId(e.target.value)}
               className="w-full px-4 py-3 rounded-lg border-2 border-secondary bg-background text-text focus:border-cta focus:outline-none transition-all"
             >
-              {availableProjects.map((project) => (
+              <option value="">-- Select a project --</option>
+              {projects.map((project) => (
                 <option key={project.id} value={project.id}>
-                  {project.name}
+                  {project.name} ({project.languages.join(', ')})
                 </option>
               ))}
             </select>
-          </div>
-          
-          {/* Platform Selection */}
-          <div className="mb-6">
-            <label className="block text-sm font-medium mb-2">
-              Select Platforms
-            </label>
-            <div className="space-y-2">
-              {availablePlatforms.map((platform) => (
-                <label
-                  key={platform.id}
-                  className="flex items-center gap-2"
+          )}
+
+          {/* Entry count */}
+          {selectedProjectId && (
+            <div className="mt-4 flex items-center gap-4">
+              <Badge variant="info">
+                {isLoadingEntries ? 'Loading...' : `${entries.length} entries`}
+              </Badge>
+              {entries.length > 0 && (
+                <span className="text-sm text-text-secondary">
+                  {selectedLanguages.size} languages selected
+                </span>
+              )}
+            </div>
+          )}
+        </Card>
+
+        {/* Export Configuration */}
+        {exportStatus.step === 'idle' || exportStatus.step === 'loading' ? (
+          <Card className="mb-8">
+            <h2 className="text-xl font-semibold mb-6">Export Configuration</h2>
+
+            {/* Language Selection */}
+            <div className="mb-6">
+              <div className="flex items-center justify-between mb-4">
+                <label className="block text-sm font-medium">Select Languages</label>
+                <button
+                  onClick={handleSelectAllLanguages}
+                  className="text-cta hover:text-cta/80 text-sm font-medium underline underline-offset-2 transition-colors"
                 >
-                  <input
-                    type="checkbox"
-                    checked={selectedPlatforms.has(platform.id as 'iOS' | 'Android' | 'Web')}
-                    onChange={() => handlePlatformToggle(platform.id as 'iOS' | 'Android' | 'Web')}
-                    className="w-5 h-5 cursor-pointer"
-                  />
-                  <span className="text-sm">
-                    {platform.name}
-                  </span>
-                </label>
-              ))}
+                  Select All
+                </button>
+              </div>
+              <div className="grid grid-cols-4 gap-3">
+                {availableLanguages.map((lang) => (
+                  <label
+                    key={lang.code}
+                    className={`
+                      flex items-center gap-2 px-4 py-3 rounded-lg cursor-pointer border-2 transition-all
+                      ${
+                        selectedLanguages.has(lang.code)
+                          ? 'border-cta bg-cta/10 text-cta'
+                          : 'border-secondary bg-background text-text hover:border-cta/50'
+                      }
+                    `}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selectedLanguages.has(lang.code)}
+                      onChange={() => handleLanguageToggle(lang.code)}
+                      className="w-4 h-4 accent-cta"
+                    />
+                    <span className="text-sm font-medium">{lang.code}</span>
+                    <span className="text-xs text-text-secondary">{lang.name}</span>
+                  </label>
+                ))}
+              </div>
             </div>
-          </div>
-          
-          {/* Language Selection */}
-          <div className="mb-6">
-            <label className="block text-sm font-medium mb-2">
-              Select Languages
-            </label>
-            <div className="grid grid-cols-3 gap-2">
-              {availableLanguages.map((language) => (
-                <label
-                  key={language}
-                  className="flex items-center gap-2"
-                >
-                  <input
-                    type="checkbox"
-                    checked={selectedLanguages.has(language)}
-                    onChange={() => handleLanguageToggle(language)}
-                    className="w-5 h-5 cursor-pointer"
-                  />
-                  <span className="text-sm font-mono">
-                    {language}
-                  </span>
-                </label>
-              ))}
+
+            {/* Export Button */}
+            <div className="flex gap-4 justify-end">
+              <Button
+                onClick={handleExport}
+                disabled={
+                  !selectedProjectId ||
+                  entries.length === 0 ||
+                  selectedLanguages.size === 0 ||
+                  isLoadingEntries
+                }
+              >
+                <Download className="w-4 h-4 mr-2" />
+                Export Translations
+              </Button>
             </div>
-            <button
-              className="text-cta hover:text-cta/80 text-sm font-medium underline underline-offset-2 transition-colors"
-              onClick={() => {
-                setSelectedLanguages(new Set(['CN', 'DA', 'DE', 'EN', 'ES', 'FI', 'FR', 'IT', 'NL', 'NO', 'PL', 'SE']));
-              }}
-            >
-              Select All
-            </button>
-          </div>
-          
-          {/* Download Button */}
-          <Button onClick={handleDownload} className="w-full">
-            Download
-          </Button>
-        </div>
-        
-        {/* Right Column - API Info */}
-        <div className="bg-background border border-secondary rounded-lg p-6">
-          <h2 className="text-2xl font-semibold mb-6">API Endpoints</h2>
-          <div className="space-y-4">
-            <div>
-              <h3 className="font-semibold text-cta mb-2">Get Projects</h3>
-              <code className="block bg-secondary/20 text-cta px-3 py-2 rounded text-sm font-mono">
-                GET /api/projects
-              </code>
+          </Card>
+        ) : exportStatus.step === 'exporting' ? (
+          <Card className="mb-8">
+            <div className="text-center py-12">
+              <Loader2 className="animate-spin h-12 w-12 text-cta mx-auto mb-4" />
+              <p className="text-xl font-semibold mb-2">Exporting Translations...</p>
+              <p className="text-text-secondary">{exportStatus.progress}% completed</p>
             </div>
-            <div>
-              <h3 className="font-semibold text-cta mb-2">Download Files</h3>
-              <code className="block bg-secondary/20 text-cta px-3 py-2 rounded text-sm font-mono">
-                GET /api/projects/:projectId/export?platform=\&#123;platform\&#125;&language=\&#123;language\&#125;
-              </code>
-            </div>
-            <div>
-              <h3 className="font-semibold text-cta mb-2">Download ZIP Archive</h3>
-              <code className="block bg-secondary/20 text-cta px-3 py-2 rounded text-sm font-mono">
-                POST /api/projects/:id/export/zip
-              </code>
-            </div>
-            
-            <div className="pt-4 border-t border-secondary">
-              <p className="text-xs text-secondary mb-2">
-                <strong>Note:</strong> Replace <code>:projectId</code> with your project ID, <code>platform</code> with the platform type (iOS/Android/Web), and <code>language</code> with the language code.
+          </Card>
+        ) : exportStatus.step === 'success' ? (
+          <Card className="mb-8">
+            <div className="text-center py-12">
+              <CheckCircle className="w-20 h-20 text-success mx-auto mb-6" />
+              <h2 className="text-2xl font-semibold mb-2">Export Completed Successfully!</h2>
+              <p className="text-text-secondary mb-6">
+                {selectedLanguages.size} language files have been downloaded
               </p>
-              <p className="text-xs text-secondary mb-2">
-              </p>
-              <p className="text-xs text-secondary mb-4">
-                <strong>Rate Limit:</strong> 100 requests/minute
-              </p>
+              <div className="flex gap-4 justify-center">
+                <Button onClick={() => navigate(`/projects/${selectedProjectId}`)}>
+                  View Project
+                </Button>
+                <Button variant="secondary" onClick={handleReset}>
+                  Export Another
+                </Button>
+              </div>
             </div>
-          </div>
-        </div>
-      </div>
-      
-      {/* Export History */}
-      <div className="mt-8">
-        <h2 className="text-2xl font-semibold mb-6">Export History</h2>
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-secondary">
-                <th className="px-4 py-3 text-left">Timestamp</th>
-                <th className="px-4 py-3 text-left">Project</th>
-                <th className="px-4 py-3 text-left">Platform</th>
-                <th className="px-4 py-3 text-left">Language</th>
-                <th className="px-4 py-3 text-left">Version</th>
-                <th className="px-4 py-3 text-left">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {exportHistory.map((exportItem) => (
-                <tr key={exportItem.id} className="border-b border-secondary">
-                  <td className="px-4 py-3 text-sm text-secondary">
-                    {new Date(exportItem.timestamp).toLocaleString()}
-                  </td>
-                  <td className="px-4 py-3">
-                    {exportItem.project}
-                  </td>
-                  <td className="px-4 py-3">
-                    <Badge variant="info">{exportItem.platform}</Badge>
-                  </td>
-                  <td className="px-4 py-3">
-                    {exportItem.language}
-                  </td>
-                  <td className="px-4 py-3">
-                    <span className="text-xs text-secondary font-mono">
-                      {exportItem.version}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3">
-                    <button
-                      className="text-cta hover:text-cta/80 text-sm font-medium underline underline-offset-2 transition-colors"
-                      onClick={() => handleDownloadHistory(exportItem.id)}
-                    >
-                      Download
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+          </Card>
+        ) : (
+          <Card className="mb-8">
+            <div className="text-center py-12">
+              <FileText className="w-20 h-20 text-error mx-auto mb-6" />
+              <h2 className="text-2xl font-semibold mb-2">Export Failed</h2>
+              <p className="text-error mb-6">{exportStatus.error}</p>
+              <Button variant="secondary" onClick={handleReset}>
+                Try Again
+              </Button>
+            </div>
+          </Card>
+        )}
+
+        {/* Preview */}
+        {exportStatus.step === 'idle' && selectedProjectId && entries.length > 0 && (
+          <Card>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-semibold">Preview</h2>
+              <Badge variant="info">{entries.length} entries</Badge>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-secondary">
+                    <th className="text-left px-2 py-2 text-text-secondary font-medium">Key</th>
+                    <th className="text-left px-2 py-2 text-text-secondary font-medium">EN</th>
+                    <th className="text-left px-2 py-2 text-text-secondary font-medium">DE</th>
+                    <th className="text-left px-2 py-2 text-text-secondary font-medium">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {entries.slice(0, 10).map((entry) => (
+                    <tr key={entry.id} className="border-b border-secondary/50">
+                      <td className="px-2 py-2 text-text font-medium">{entry.key}</td>
+                      <td className="px-2 py-2 text-text-secondary">{entry.en || '-'}</td>
+                      <td className="px-2 py-2 text-text-secondary">{entry.de || '-'}</td>
+                      <td className="px-2 py-2">
+                        <Badge variant={entry.status === 'NEW' ? 'success' : 'info'}>
+                          {entry.status}
+                        </Badge>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {entries.length > 10 && (
+                <p className="text-sm text-text-secondary mt-2 text-center">
+                  Showing first 10 of {entries.length} entries
+                </p>
+              )}
+            </div>
+          </Card>
+        )}
       </div>
     </DashboardLayout>
   );

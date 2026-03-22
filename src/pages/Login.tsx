@@ -57,7 +57,7 @@ const Login: React.FC = () => {
           </div>
 
           {error && (
-            <Alert variant="error" className="mb-6">
+            <Alert type="error" className="mb-6">
               {error}
             </Alert>
           )}

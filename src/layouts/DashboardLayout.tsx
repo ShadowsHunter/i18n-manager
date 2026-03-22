@@ -1,17 +1,42 @@
 import React from 'react';
+import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { LayoutDashboard, FolderKanban, Key, Download, LogOut } from 'lucide-react';
+import { LayoutDashboard, Key, Download, LogOut, Upload } from 'lucide-react';
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
-  currentPage?: string;
+  currentPage?: string; // 可选，用于向后兼容
 }
 
-export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
-  children,
-  currentPage = 'Dashboard',
-}) => {
+export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, currentPage }) => {
   const { logout } = useAuth();
+  const location = useLocation();
+
+  // 优先使用传入的 currentPage，否则根据路径判断
+  const getIsActive = (path: string) => {
+    if (currentPage) {
+      // 使用传入的 currentPage
+      if (path === '/dashboard' || path === '/') {
+        return currentPage === 'Dashboard' || currentPage === 'dashboard';
+      }
+      if (path === '/upload') {
+        return currentPage === 'Upload Excel' || currentPage === 'upload';
+      }
+      if (path === '/api-keys') {
+        return currentPage === 'api-keys' || currentPage === 'API Keys';
+      }
+      if (path === '/export') {
+        return currentPage === 'export' || currentPage === 'Export';
+      }
+      return false;
+    }
+
+    // 根据 location.pathname 判断
+    if (path === '/dashboard' || path === '/') {
+      return location.pathname === '/dashboard' || location.pathname === '/';
+    }
+    return location.pathname.startsWith(path);
+  };
 
   return (
     <div className="min-h-screen bg-background text-text flex">
@@ -29,49 +54,49 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
 
         {/* Navigation */}
         <nav className="flex-1 p-4 space-y-2">
-          <a
-            href="/dashboard"
+          <Link
+            to="/dashboard"
             className={`
               flex items-center gap-3 px-4 py-3 rounded-lg transition-all
-              ${currentPage === 'dashboard' ? 'bg-secondary/20 text-cta border-l-4 border-cta' : 'text-text hover:bg-secondary/10'}
+              ${getIsActive('/dashboard') ? 'bg-secondary/20 text-cta border-l-4 border-cta' : 'text-text hover:bg-secondary/10'}
             `}
           >
             <LayoutDashboard className="w-5 h-5" />
             <span className="font-medium">Dashboard</span>
-          </a>
+          </Link>
 
-          <a
-            href="/projects"
+          <Link
+            to="/upload"
             className={`
               flex items-center gap-3 px-4 py-3 rounded-lg transition-all
-              ${currentPage === 'projects' ? 'bg-secondary/20 text-cta border-l-4 border-cta' : 'text-text hover:bg-secondary/10'}
+              ${getIsActive('/upload') ? 'bg-secondary/20 text-cta border-l-4 border-cta' : 'text-text hover:bg-secondary/10'}
             `}
           >
-            <FolderKanban className="w-5 h-5" />
-            <span className="font-medium">Projects</span>
-          </a>
+            <Upload className="w-5 h-5" />
+            <span className="font-medium">Upload Excel</span>
+          </Link>
 
-          <a
-            href="/api-keys"
+          <Link
+            to="/api-keys"
             className={`
               flex items-center gap-3 px-4 py-3 rounded-lg transition-all
-              ${currentPage === 'api-keys' ? 'bg-secondary/20 text-cta border-l-4 border-cta' : 'text-text hover:bg-secondary/10'}
+              ${getIsActive('/api-keys') ? 'bg-secondary/20 text-cta border-l-4 border-cta' : 'text-text hover:bg-secondary/10'}
             `}
           >
             <Key className="w-5 h-5" />
             <span className="font-medium">API Keys</span>
-          </a>
+          </Link>
 
-          <a
-            href="/export"
+          <Link
+            to="/export"
             className={`
               flex items-center gap-3 px-4 py-3 rounded-lg transition-all
-              ${currentPage === 'export' ? 'bg-secondary/20 text-cta border-l-4 border-cta' : 'text-text hover:bg-secondary/10'}
+              ${getIsActive('/export') ? 'bg-secondary/20 text-cta border-l-4 border-cta' : 'text-text hover:bg-secondary/10'}
             `}
           >
             <Download className="w-5 h-5" />
             <span className="font-medium">Export</span>
-          </a>
+          </Link>
         </nav>
 
         {/* User Info & Logout */}

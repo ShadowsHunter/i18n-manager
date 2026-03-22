@@ -167,7 +167,7 @@ router.post('/:projectId/export', async (req: Request, res: Response) => {
     }
 
     // Validate languages
-    const validLanguages = ['CN', 'EN', 'DE', 'ES', 'FI', 'FR', 'IT', 'NL', 'NO', 'PL', 'SE'];
+    const validLanguages = ['CN', 'EN', 'DE', 'ES', 'FI', 'FR', 'IT', 'NL', 'NO', 'PL', 'SE', 'DA'];
     const invalidLanguages = languages.filter(
       (l: string) => !validLanguages.includes(l.toUpperCase())
     );

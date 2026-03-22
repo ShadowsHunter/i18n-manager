@@ -76,9 +76,7 @@ export class EntryService {
   async getEntries(projectId: string, filters?: EntryFilters): Promise<PaginatedEntries> {
     const { status, search, language, skip = 0, take = 100 } = filters || {};
 
-    let query = supabase
-      .from('entries')
-      .select('*', { count: 'exact' });
+    let query = supabase.from('entries').select('*', { count: 'exact' });
 
     // Apply project filter
     query = query.eq('project_id', projectId);
@@ -101,9 +99,7 @@ export class EntryService {
     }
 
     // Apply pagination
-    query = query
-      .order('updated_at', { ascending: false })
-      .range(skip, skip + take - 1);
+    query = query.order('updated_at', { ascending: false }).range(skip, skip + take - 1);
 
     const { data: entries, error, count } = await query;
 
@@ -112,26 +108,28 @@ export class EntryService {
     }
 
     // Map database fields to Entry interface
-    const mappedEntries = entries?.map(entry => ({
-      id: entry.id,
-      projectId: entry.project_id,
-      key: entry.key,
-      cn: entry.cn,
-      en: entry.en,
-      de: entry.de,
-      es: entry.es,
-      fi: entry.fi,
-      fr: entry.fr,
-      it: entry.it,
-      nl: entry.nl,
-      no: entry.no,
-      pl: entry.pl,
-      se: entry.se,
-      status: entry.status,
-      error: entry.error,
-      createdAt: entry.created_at,
-      updatedAt: entry.updated_at,
-    })) || [];
+    // Note: Supabase returns field names in lowercase without underscores
+    const mappedEntries =
+      entries?.map((entry) => ({
+        id: entry.id,
+        projectId: entry.projectid || entry.project_id,
+        key: entry.key,
+        cn: entry.cn,
+        en: entry.en,
+        de: entry.de,
+        es: entry.es,
+        fi: entry.fi,
+        fr: entry.fr,
+        it: entry.it,
+        nl: entry.nl,
+        no: entry.no,
+        pl: entry.pl,
+        se: entry.se,
+        status: entry.status,
+        error: entry.error,
+        createdAt: entry.createdat || entry.created_at,
+        updatedAt: entry.updatedat || entry.updated_at,
+      })) || [];
 
     return {
       entries: mappedEntries,
@@ -158,7 +156,7 @@ export class EntryService {
 
     return {
       id: entry.id,
-      projectId: entry.project_id,
+      projectId: entry.projectid || entry.project_id,
       key: entry.key,
       cn: entry.cn,
       en: entry.en,
@@ -173,8 +171,8 @@ export class EntryService {
       se: entry.se,
       status: entry.status,
       error: entry.error,
-      createdAt: entry.created_at,
-      updatedAt: entry.updated_at,
+      createdAt: entry.createdat || entry.created_at,
+      updatedAt: entry.updatedat || entry.updated_at,
     };
   }
 
@@ -217,7 +215,7 @@ export class EntryService {
 
     return {
       id: entry.id,
-      projectId: entry.project_id,
+      projectId: entry.projectid || entry.project_id,
       key: entry.key,
       cn: entry.cn,
       en: entry.en,
@@ -232,8 +230,8 @@ export class EntryService {
       se: entry.se,
       status: entry.status,
       error: entry.error,
-      createdAt: entry.created_at,
-      updatedAt: entry.updated_at,
+      createdAt: entry.createdat || entry.created_at,
+      updatedAt: entry.updatedat || entry.updated_at,
     };
   }
 
@@ -261,7 +259,7 @@ export class EntryService {
     const updateData: any = {};
     if (input.key !== undefined) updateData.key = input.key;
     if (input.translations !== undefined) {
-      Object.keys(input.translations).forEach(lang => {
+      Object.keys(input.translations).forEach((lang) => {
         updateData[lang] = input.translations[lang];
       });
     }
@@ -283,7 +281,7 @@ export class EntryService {
 
     return {
       id: entry.id,
-      projectId: entry.project_id,
+      projectId: entry.projectid || entry.project_id,
       key: entry.key,
       cn: entry.cn,
       en: entry.en,
@@ -298,8 +296,8 @@ export class EntryService {
       se: entry.se,
       status: entry.status,
       error: entry.error,
-      createdAt: entry.created_at,
-      updatedAt: entry.updated_at,
+      createdAt: entry.createdat || entry.created_at,
+      updatedAt: entry.updatedat || entry.updated_at,
     };
   }
 
@@ -359,7 +357,7 @@ export class EntryService {
     // Prepare update data
     const updateData: any = {};
     if (updates.translations) {
-      Object.keys(updates.translations).forEach(lang => {
+      Object.keys(updates.translations).forEach((lang) => {
         updateData[lang] = updates.translations[lang];
       });
     }
@@ -439,7 +437,7 @@ export class EntryService {
     }
 
     // Prepare entries for insertion
-    const entriesToInsert = entries.map(entry => ({
+    const entriesToInsert = entries.map((entry) => ({
       project_id: projectId,
       key: entry.key,
       ...entry.translations,
@@ -457,9 +455,9 @@ export class EntryService {
     }
 
     // Map database fields to Entry interface
-    const mappedEntries = createdEntries.map(entry => ({
+    const mappedEntries = createdEntries.map((entry) => ({
       id: entry.id,
-      projectId: entry.project_id,
+      projectId: entry.projectid || entry.project_id,
       key: entry.key,
       cn: entry.cn,
       en: entry.en,
@@ -474,8 +472,8 @@ export class EntryService {
       se: entry.se,
       status: entry.status,
       error: entry.error,
-      createdAt: entry.created_at,
-      updatedAt: entry.updated_at,
+      createdAt: entry.createdat || entry.created_at,
+      updatedAt: entry.updatedat || entry.updated_at,
     }));
 
     return {
@@ -503,7 +501,7 @@ export class EntryService {
 
     // Convert to Record format
     const stats: Record<string, number> = {};
-    byStatus?.forEach(item => {
+    byStatus?.forEach((item) => {
       if (item.status) {
         stats[item.status] = item.count;
       }

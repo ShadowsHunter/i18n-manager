@@ -82,7 +82,7 @@ export interface ApiResponse<T = any> {
 }
 
 export interface PaginatedResponse<T> {
-  data: T[];
+  entries: T[];
   pagination: {
     page: number;
     limit: number;
@@ -122,6 +122,7 @@ export interface Project {
 // 条目类型
 export interface Entry {
   id: string;
+  uuid: string;
   projectId: string;
   key: string;
   cn: string | null;
