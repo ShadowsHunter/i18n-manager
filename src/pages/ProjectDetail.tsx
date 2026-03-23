@@ -93,6 +93,7 @@ function ProjectDetail() {
     no: string;
     pl: string;
     se: string;
+    da: string;
     status: Entry['status'];
   }>({
     key: '',
@@ -107,6 +108,7 @@ function ProjectDetail() {
     no: '',
     pl: '',
     se: '',
+    da: '',
     status: 'NEW',
   });
   const [isEditing, setIsEditing] = useState(false);
@@ -227,7 +229,7 @@ function ProjectDetail() {
   const handleOpenEditModal = (entry: Entry) => {
     setEditingEntryId(entry.id);
     setEditingEntry({
-      key: entry.key || '',
+      key: entry.uuid || '', // 使用 UUID 作为 key 显示
       cn: entry.cn || '',
       en: entry.en || '',
       de: entry.de || '',
@@ -239,6 +241,7 @@ function ProjectDetail() {
       no: entry.no || '',
       pl: entry.pl || '',
       se: entry.se || '',
+      da: entry.da || '',
       status: entry.status || 'NEW',
     });
     setShowEditModal(true);
@@ -276,6 +279,7 @@ function ProjectDetail() {
           no: '',
           pl: '',
           se: '',
+          da: '',
           status: 'NEW',
         });
         // 显示成功提示
@@ -864,10 +868,10 @@ function ProjectDetail() {
 
             <div>
               <Input
-                id="edit-de"
-                label="German (DE)"
-                value={editingEntry.de}
-                onChange={(e) => setEditingEntry({ ...editingEntry, de: e.target.value })}
+                id="edit-da"
+                label="Danish (DA)"
+                value={editingEntry.da}
+                onChange={(e) => setEditingEntry({ ...editingEntry, da: e.target.value })}
               />
             </div>
 

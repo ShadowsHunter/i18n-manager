@@ -136,7 +136,8 @@ export interface Entry {
   no: string | null;
   pl: string | null;
   se: string | null;
-  status: 'NEW' | 'MODIFIED' | 'TRANSLATED' | 'REVIEWED';
+  da: string | null;
+  status: 'NEW' | 'MODIFIED' | 'TRANSLATED' | 'REVIEWED' | 'ERROR';
   error: string | null;
   createdAt: string;
   updatedAt: string;
