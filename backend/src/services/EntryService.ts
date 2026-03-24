@@ -80,7 +80,7 @@ export class EntryService {
     let query = supabase.from('entries').select('*', { count: 'exact' });
 
     // Apply project filter
-    query = query.eq('project_id', projectId);
+    query = query.eq('projectid', projectId);
 
     // Apply status filter
     if (status) {
@@ -100,7 +100,7 @@ export class EntryService {
     }
 
     // Apply pagination
-    query = query.order('updated_at', { ascending: false }).range(skip, skip + take - 1);
+    query = query.order('updatedat', { ascending: false }).range(skip, skip + take - 1);
 
     const { data: entries, error, count } = await query;
 
@@ -113,7 +113,7 @@ export class EntryService {
     const mappedEntries =
       entries?.map((entry) => ({
         id: entry.id,
-        projectId: entry.projectid || entry.project_id,
+        projectId: entry.projectid || entry.projectid,
         key: entry.key,
         cn: entry.cn,
         en: entry.en,
@@ -149,7 +149,7 @@ export class EntryService {
       .from('entries')
       .select('*')
       .eq('id', uuid)
-      .eq('project_id', projectId)
+      .eq('projectid', projectId)
       .single();
 
     if (error) {
@@ -158,7 +158,7 @@ export class EntryService {
 
     return {
       id: entry.id,
-      projectId: entry.projectid || entry.project_id,
+      projectId: entry.projectid || entry.projectid,
       key: entry.key,
       cn: entry.cn,
       en: entry.en,
@@ -203,9 +203,9 @@ export class EntryService {
       .from('entries')
       .insert([
         {
-          project_id: input.projectId,
+          projectid: input.projectId,
           key: input.key,
-          ...input.translations,
+          ...input.translations
           status: 'NEW',
         },
       ])
@@ -218,7 +218,7 @@ export class EntryService {
 
     return {
       id: entry.id,
-      projectId: entry.projectid || entry.project_id,
+      projectId: entry.projectid || entry.projectid,
       key: entry.key,
       cn: entry.cn,
       en: entry.en,
@@ -247,11 +247,15 @@ export class EntryService {
       .from('entries')
       .select('id')
       .eq('id', uuid)
-      .eq('project_id', projectId)
+      .eq('projectid', projectId)
       .maybeSingle();
 
     if (fetchError) {
       handleSupabaseError(fetchError);
+    }
+
+    if (!existing) {
+      throw new Error('ENTRY not found');
     }
 
     if (!existing) {
@@ -274,7 +278,7 @@ export class EntryService {
       .from('entries')
       .update(updateData)
       .eq('id', uuid)
-      .eq('project_id', projectId)
+      .eq('projectid', projectId)
       .select()
       .single();
 
@@ -284,7 +288,7 @@ export class EntryService {
 
     return {
       id: entry.id,
-      projectId: entry.projectid || entry.project_id,
+      projectId: entry.projectid || entry.projectid,
       key: entry.key,
       cn: entry.cn,
       en: entry.en,
@@ -313,11 +317,15 @@ export class EntryService {
       .from('entries')
       .select('id')
       .eq('id', uuid)
-      .eq('project_id', projectId)
+      .eq('projectid', projectId)
       .maybeSingle();
 
     if (fetchError) {
       handleSupabaseError(fetchError);
+    }
+
+    if (!existing) {
+      throw new Error('ENTRY not found');
     }
 
     if (!existing) {
@@ -329,7 +337,7 @@ export class EntryService {
       .from('entries')
       .delete()
       .eq('id', uuid)
-      .eq('project_id', projectId);
+      .eq('projectid', projectId);
 
     if (error) {
       handleSupabaseError(error);
@@ -347,7 +355,7 @@ export class EntryService {
       .from('entries')
       .select('id')
       .in('id', uuids)
-      .eq('project_id', projectId);
+      .eq('projectid', projectId);
 
     if (fetchError) {
       handleSupabaseError(fetchError);
@@ -372,7 +380,7 @@ export class EntryService {
       .from('entries')
       .update(updateData)
       .in('id', uuids)
-      .eq('project_id', projectId);
+      .eq('projectid', projectId);
 
     if (error) {
       handleSupabaseError(error);
@@ -393,7 +401,7 @@ export class EntryService {
       .from('entries')
       .select('id')
       .in('id', uuids)
-      .eq('project_id', projectId);
+      .eq('projectid', projectId);
 
     if (fetchError) {
       handleSupabaseError(fetchError);
@@ -408,7 +416,7 @@ export class EntryService {
       .from('entries')
       .delete()
       .in('id', uuids)
-      .eq('project_id', projectId);
+      .eq('projectid', projectId);
 
     if (error) {
       handleSupabaseError(error);
@@ -441,7 +449,7 @@ export class EntryService {
 
     // Prepare entries for insertion
     const entriesToInsert = entries.map((entry) => ({
-      project_id: projectId,
+      projectid: projectId,
       key: entry.key,
       ...entry.translations,
       status: 'NEW',
@@ -460,7 +468,7 @@ export class EntryService {
     // Map database fields to Entry interface
     const mappedEntries = createdEntries.map((entry) => ({
       id: entry.id,
-      projectId: entry.projectid || entry.project_id,
+      projectId: entry.projectid || entry.projectid,
       key: entry.key,
       cn: entry.cn,
       en: entry.en,
@@ -495,13 +503,13 @@ export class EntryService {
     const { count: total } = await supabase
       .from('entries')
       .select('*', { count: 'exact', head: true })
-      .eq('project_id', projectId);
+      .eq('projectid', projectId);
 
     // Get counts by status
     const { data: byStatus } = await supabase
       .from('entries')
       .select('status, count')
-      .eq('project_id', projectId);
+      .eq('projectid', projectId);
 
     // Convert to Record format
     const stats: Record<string, number> = {};
