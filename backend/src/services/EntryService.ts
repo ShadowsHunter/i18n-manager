@@ -48,6 +48,7 @@ export interface Entry {
   no?: string;
   pl?: string;
   se?: string;
+  da?: string;
   status: EntryStatus;
   error?: string;
   createdAt: string;
@@ -472,6 +473,7 @@ export class EntryService {
       no: entry.no,
       pl: entry.pl,
       se: entry.se,
+      da: entry.da,
       status: entry.status,
       error: entry.error,
       createdAt: entry.createdat || entry.created_at,

@@ -229,7 +229,7 @@ function ProjectDetail() {
   const handleOpenEditModal = (entry: Entry) => {
     setEditingEntryId(entry.id);
     setEditingEntry({
-      key: entry.uuid || '', // 使用 UUID 作为 key 显示
+      key: entry.key || '', // 使用 key 而不是 uuid
       cn: entry.cn || '',
       en: entry.en || '',
       de: entry.de || '',
@@ -438,7 +438,7 @@ function ProjectDetail() {
     .filter((entry) => {
       // 搜索过滤
       const matchesSearch =
-        entry.uuid?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        entry.key?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         entry.en?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         entry.de?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         entry.fr?.toLowerCase().includes(searchTerm.toLowerCase());
@@ -625,7 +625,7 @@ function ProjectDetail() {
               <thead>
                 <tr className="border-b-2 border-secondary">
                   <th className="text-left px-4 py-3 text-sm font-medium text-text-secondary">
-                    UUID
+                    Key
                   </th>
                   <th className="text-left px-4 py-3 text-sm font-medium text-text-secondary">
                     EN
@@ -653,9 +653,7 @@ function ProjectDetail() {
                     key={entry.id}
                     className="border-b border-secondary/50 hover:bg-background/50 transition-colors"
                   >
-                    <td className="px-4 py-3 text-text font-medium font-mono text-sm">
-                      {entry.uuid}
-                    </td>
+                    <td className="px-4 py-3 text-text font-medium text-sm">{entry.key}</td>
                     <td className="px-4 py-3 text-text-secondary">{entry.en || '-'}</td>
                     <td className="px-4 py-3 text-text-secondary">{entry.de || '-'}</td>
                     <td className="px-4 py-3 text-text-secondary">{entry.fr || '-'}</td>

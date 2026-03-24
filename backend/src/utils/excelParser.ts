@@ -1,8 +1,9 @@
 import * as XLSX from 'xlsx';
 import { ErrorCode } from '../types/api';
+import * as crypto from 'crypto';
 
 export interface ParsedEntry {
-  uuid: string;
+  key: string;
   projectId: string;
   cn?: string;
   en?: string;
@@ -15,6 +16,7 @@ export interface ParsedEntry {
   no?: string;
   pl?: string;
   se?: string;
+  da?: string;
 }
 
 export interface ParsedExcel {
@@ -33,8 +35,9 @@ export interface ParseResult {
 /**
  * Parse Excel file and extract translation entries
  * Expected format:
- * - First row: headers (UUID, CN, EN, DE, ES, FI, FR, IT, NL, NO, PL, SE)
+ * - First row: headers (Key, CN, EN, DE, ES, FI, FR, IT, NL, NO, PL, SE, DA)
  * - Subsequent rows: entry data
+ * - If Key is empty, a UUID will be generated automatically
  */
 export const parseExcelFile = (buffer: Buffer, projectId: string): ParseResult => {
   try {
@@ -52,27 +55,19 @@ export const parseExcelFile = (buffer: Buffer, projectId: string): ParseResult =
     const data = XLSX.utils.sheet_to_json(worksheet, { header: 1 }) as any[][];
     const headers = data[0];
 
-    // Validate headers
-    const requiredHeaders = [
-      'UUID',
-      'CN',
-      'EN',
-      'DE',
-      'ES',
-      'FI',
-      'FR',
-      'IT',
-      'NL',
-      'NO',
-      'PL',
-      'SE',
-    ];
-    const missingHeaders = requiredHeaders.filter((h) => !headers.includes(h));
-
-    if (missingHeaders.length > 0) {
+    if (!headers || headers.length === 0) {
       return {
         success: false,
-        error: `Missing required columns: ${missingHeaders.join(', ')}`,
+        error: 'Excel file has no headers',
+      };
+    }
+
+    // Validate headers - Key column is required
+    const keyHeaderIndex = headers.findIndex((h: string) => h?.toString().toLowerCase() === 'key');
+    if (keyHeaderIndex === -1) {
+      return {
+        success: false,
+        error: 'Missing required column: Key (first column)',
       };
     }
 
@@ -80,42 +75,68 @@ export const parseExcelFile = (buffer: Buffer, projectId: string): ParseResult =
     const entries: ParsedEntry[] = [];
     const errors: string[] = [];
 
+    // Find column indices (case-insensitive)
+    const keyIndex = headers.findIndex((h: string) => h?.toString().toLowerCase() === 'key');
+    const cnIndex = headers.findIndex((h: string) => h?.toString().toUpperCase() === 'CN');
+    const enIndex = headers.findIndex((h: string) => h?.toString().toUpperCase() === 'EN');
+    const deIndex = headers.findIndex((h: string) => h?.toString().toUpperCase() === 'DE');
+    const esIndex = headers.findIndex((h: string) => h?.toString().toUpperCase() === 'ES');
+    const fiIndex = headers.findIndex((h: string) => h?.toString().toUpperCase() === 'FI');
+    const frIndex = headers.findIndex((h: string) => h?.toString().toUpperCase() === 'FR');
+    const itIndex = headers.findIndex((h: string) => h?.toString().toUpperCase() === 'IT');
+    const nlIndex = headers.findIndex((h: string) => h?.toString().toUpperCase() === 'NL');
+    const noIndex = headers.findIndex((h: string) => h?.toString().toUpperCase() === 'NO');
+    const plIndex = headers.findIndex((h: string) => h?.toString().toUpperCase() === 'PL');
+    const seIndex = headers.findIndex((h: string) => h?.toString().toUpperCase() === 'SE');
+    const daIndex = headers.findIndex((h: string) => h?.toString().toUpperCase() === 'DA');
+
     for (let i = 1; i < data.length; i++) {
       const row = data[i];
-      const entryId = `entry-${i}`;
 
       try {
-        // Extract UUID (required)
-        const uuid = row['UUID']?.toString().trim();
-        if (!uuid) {
-          errors.push(`Row ${i + 1}: Missing UUID`);
-          continue;
+        // Extract Key - if empty, generate UUID
+        let keyValue = row[keyIndex]?.toString().trim();
+        if (!keyValue) {
+          // 如果 key 为空，则生成 UUID
+          keyValue = crypto.randomUUID();
         }
 
         // Extract translations for each language
         const entry: ParsedEntry = {
-          uuid,
+          key: keyValue,
           projectId,
-          cn: row['CN']?.toString().trim() || undefined,
-          en: row['EN']?.toString().trim() || undefined,
-          de: row['DE']?.toString().trim() || undefined,
-          es: row['ES']?.toString().trim() || undefined,
-          fi: row['FI']?.toString().trim() || undefined,
-          fr: row['FR']?.toString().trim() || undefined,
-          it: row['IT']?.toString().trim() || undefined,
-          nl: row['NL']?.toString().trim() || undefined,
-          no: row['NO']?.toString().trim() || undefined,
-          pl: row['PL']?.toString().trim() || undefined,
-          se: row['SE']?.toString().trim() || undefined,
+          cn: cnIndex >= 0 ? row[cnIndex]?.toString().trim() || undefined : undefined,
+          en: enIndex >= 0 ? row[enIndex]?.toString().trim() || undefined : undefined,
+          de: deIndex >= 0 ? row[deIndex]?.toString().trim() || undefined : undefined,
+          es: esIndex >= 0 ? row[esIndex]?.toString().trim() || undefined : undefined,
+          fi: fiIndex >= 0 ? row[fiIndex]?.toString().trim() || undefined : undefined,
+          fr: frIndex >= 0 ? row[frIndex]?.toString().trim() || undefined : undefined,
+          it: itIndex >= 0 ? row[itIndex]?.toString().trim() || undefined : undefined,
+          nl: nlIndex >= 0 ? row[nlIndex]?.toString().trim() || undefined : undefined,
+          no: noIndex >= 0 ? row[noIndex]?.toString().trim() || undefined : undefined,
+          pl: plIndex >= 0 ? row[plIndex]?.toString().trim() || undefined : undefined,
+          se: seIndex >= 0 ? row[seIndex]?.toString().trim() || undefined : undefined,
+          da: daIndex >= 0 ? row[daIndex]?.toString().trim() || undefined : undefined,
         };
 
         // Validate entry has at least one translation
-        const hasTranslation = Object.values(entry).some(
-          (val) => val !== undefined && val !== '' && val !== null
-        );
+        const hasTranslation = [
+          entry.cn,
+          entry.en,
+          entry.de,
+          entry.es,
+          entry.fi,
+          entry.fr,
+          entry.it,
+          entry.nl,
+          entry.no,
+          entry.pl,
+          entry.se,
+          entry.da,
+        ].some((val) => val !== undefined && val !== '');
 
         if (!hasTranslation) {
-          errors.push(`Row ${i + 1}: Entry ${uuid} has no translations`);
+          errors.push(`Row ${i + 1}: Entry "${keyValue}" has no translations`);
         }
 
         entries.push(entry);
@@ -188,37 +209,40 @@ export const generateAndroidXml = (entries: any[], projectName: string): string 
 
   entries.forEach((entry: any) => {
     if (entry.cn) {
-      xml += `  <string name="${entry.uuid}">${entry.cn}</string>\n`;
+      xml += `  <string name="${entry.key}">${entry.cn}</string>\n`;
     }
     if (entry.en) {
-      xml += `  <string name="${entry.uuid}">${entry.en}</string>\n`;
+      xml += `  <string name="${entry.key}">${entry.en}</string>\n`;
     }
     if (entry.de) {
-      xml += `  <string name="${entry.uuid}">${entry.de}</string>\n`;
+      xml += `  <string name="${entry.key}">${entry.de}</string>\n`;
     }
     if (entry.es) {
-      xml += `  <string name="${entry.uuid}">${entry.es}</string>\n`;
+      xml += `  <string name="${entry.key}">${entry.es}</string>\n`;
     }
     if (entry.fi) {
-      xml += `  <string name="${entry.uuid}">${entry.fi}</string>\n`;
+      xml += `  <string name="${entry.key}">${entry.fi}</string>\n`;
     }
     if (entry.fr) {
-      xml += `  <string name="${entry.uuid}">${entry.fr}</string>\n`;
+      xml += `  <string name="${entry.key}">${entry.fr}</string>\n`;
     }
     if (entry.it) {
-      xml += `  <string name="${entry.uuid}">${entry.it}</string>\n`;
+      xml += `  <string name="${entry.key}">${entry.it}</string>\n`;
     }
     if (entry.nl) {
-      xml += `  <string name="${entry.uuid}">${entry.nl}</string>\n>`;
+      xml += `  <string name="${entry.key}">${entry.nl}</string>\n`;
     }
     if (entry.no) {
-      xml += `  <string name="${entry.uuid}">${entry.no}</string>\n>`;
+      xml += `  <string name="${entry.key}">${entry.no}</string>\n`;
     }
     if (entry.pl) {
-      xml += `  <string name="${entry.uuid}">${entry.pl}</string>\n>`;
+      xml += `  <string name="${entry.key}">${entry.pl}</string>\n`;
     }
     if (entry.se) {
-      xml += `  <string name="${entry.uuid}">${entry.se}</string>\n>`;
+      xml += `  <string name="${entry.key}">${entry.se}</string>\n`;
+    }
+    if (entry.da) {
+      xml += `  <string name="${entry.key}">${entry.da}</string>\n`;
     }
   });
 
@@ -233,7 +257,7 @@ export const generateIosStrings = (entries: any[], projectName: string): string 
   let content = `/*\n *  ${projectName}\n *  Auto-generated by MultiLanguageManager\n *  Generated on ${new Date().toISOString()}\n */\n\n`;
 
   entries.forEach((entry: any) => {
-    content += `"${entry.uuid}" = `;
+    content += `"${entry.key}" = `;
 
     if (entry.cn) {
       content += `"${escapeString(entry.cn)}";\n`;
@@ -267,6 +291,9 @@ export const generateIosStrings = (entries: any[], projectName: string): string 
     }
     if (entry.se) {
       content += `"${escapeString(entry.se)}";\n`;
+    }
+    if (entry.da) {
+      content += `"${escapeString(entry.da)}";\n`;
     }
   });
 
