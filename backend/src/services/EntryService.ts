@@ -205,7 +205,7 @@ export class EntryService {
         {
           projectid: input.projectId,
           key: input.key,
-          ...input.translations
+          ...input.translations,
           status: 'NEW',
         },
       ])
