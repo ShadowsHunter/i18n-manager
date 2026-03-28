@@ -199,16 +199,16 @@ export class EntryService {
     }
 
     // Create entry
+    const insertData: Record<string, any> = {
+      projectid: input.projectId,
+      key: input.key,
+      ...Object.fromEntries(Object.entries(input.translations).filter(([_, v]) => v !== undefined)),
+      status: 'NEW',
+    };
+
     const { data: entry, error } = await supabase
       .from('entries')
-      .insert([
-        {
-          projectid: input.projectId,
-          key: input.key,
-          ...input.translations,
-          status: 'NEW',
-        },
-      ])
+      .insert([insertData])
       .select()
       .single();
 
@@ -231,6 +231,7 @@ export class EntryService {
       no: entry.no,
       pl: entry.pl,
       se: entry.se,
+      da: entry.da,
       status: entry.status,
       error: entry.error,
       createdAt: entry.createdat || entry.created_at,
@@ -252,10 +253,6 @@ export class EntryService {
 
     if (fetchError) {
       handleSupabaseError(fetchError);
-    }
-
-    if (!existing) {
-      throw new Error('ENTRY not found');
     }
 
     if (!existing) {
@@ -301,6 +298,7 @@ export class EntryService {
       no: entry.no,
       pl: entry.pl,
       se: entry.se,
+      da: entry.da,
       status: entry.status,
       error: entry.error,
       createdAt: entry.createdat || entry.created_at,
@@ -322,10 +320,6 @@ export class EntryService {
 
     if (fetchError) {
       handleSupabaseError(fetchError);
-    }
-
-    if (!existing) {
-      throw new Error('ENTRY not found');
     }
 
     if (!existing) {
@@ -541,6 +535,7 @@ export class EntryService {
       NO: 'no',
       PL: 'pl',
       SE: 'se',
+      DA: 'da',
     };
     return fieldMap[language.toUpperCase()] || language.toLowerCase();
   }

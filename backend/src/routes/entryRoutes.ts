@@ -93,7 +93,7 @@ router.post('/:projectId/entries', async (req: Request, res: Response) => {
     if (!hasTranslation) {
       return sendResponse(
         res,
-        validationErrorResponse({ translations: 'At least one translation is required' }),
+        validationErrorResponse({ translations: ['At least one translation is required'] }),
         400
       );
     }
