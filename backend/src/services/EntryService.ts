@@ -442,12 +442,17 @@ export class EntryService {
     }
 
     // Prepare entries for insertion
-    const entriesToInsert = entries.map((entry) => ({
-      projectid: projectId,
-      key: entry.key,
-      ...entry.translations,
-      status: 'NEW',
-    }));
+    const entriesToInsert = entries.map((entry) => {
+      const translations = Object.fromEntries(
+        Object.entries(entry.translations).filter(([_, v]) => v !== undefined && v !== null)
+      );
+      return {
+        projectid: projectId,
+        key: entry.key,
+        ...translations,
+        status: 'NEW',
+      };
+    });
 
     // Insert all entries
     const { data: createdEntries, error } = await supabase
