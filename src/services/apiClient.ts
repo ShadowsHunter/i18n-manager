@@ -122,7 +122,6 @@ export interface Project {
 // 条目类型
 export interface Entry {
   id: string;
-  uuid: string;
   projectId: string;
   key: string;
   cn: string | null;

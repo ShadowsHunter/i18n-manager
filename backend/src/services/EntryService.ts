@@ -7,6 +7,119 @@ import { supabase, handleSupabaseError } from '../lib/supabase';
 
 export type EntryStatus = 'NEW' | 'TRANSLATED' | 'REVIEWED' | 'ERROR';
 
+// Known translation columns
+const KNOWN_TRANSLATION_COLUMNS = [
+  'cn',
+  'en',
+  'de',
+  'es',
+  'fi',
+  'fr',
+  'it',
+  'nl',
+  'no',
+  'pl',
+  'se',
+  'da',
+];
+
+// Cached set of columns that actually exist in the entries table
+let cachedAvailableColumns: Set<string> | null = null;
+
+/**
+ * Query the entries table once to discover which columns exist.
+ * Caches the result for the lifetime of the process.
+ */
+async function getAvailableColumns(): Promise<Set<string>> {
+  if (cachedAvailableColumns) return cachedAvailableColumns;
+
+  try {
+    const { data, error } = await supabase.from('entries').select('*').limit(1);
+    if (error) {
+      console.warn('[EntryService] Could not detect columns, using known set:', error.message);
+      cachedAvailableColumns = new Set(KNOWN_TRANSLATION_COLUMNS);
+      return cachedAvailableColumns;
+    }
+
+    if (data && data.length > 0) {
+      cachedAvailableColumns = new Set(Object.keys(data[0]));
+      console.log(
+        '[EntryService] Detected columns:',
+        Array.from(cachedAvailableColumns).join(', ')
+      );
+    } else {
+      // No rows yet — check by inserting and deleting a dummy row
+      const { data: projects } = await supabase.from('projects').select('id').limit(1);
+      if (projects && projects.length > 0) {
+        const testEntry = { projectid: projects[0].id, key: '__column_detect__', status: 'NEW' };
+        const { data: inserted, error: insertError } = await supabase
+          .from('entries')
+          .insert([testEntry])
+          .select()
+          .single();
+        if (inserted) {
+          cachedAvailableColumns = new Set(Object.keys(inserted));
+          await supabase.from('entries').delete().eq('id', inserted.id);
+        }
+      }
+
+      if (!cachedAvailableColumns) {
+        cachedAvailableColumns = new Set(KNOWN_TRANSLATION_COLUMNS);
+      }
+    }
+  } catch {
+    cachedAvailableColumns = new Set(KNOWN_TRANSLATION_COLUMNS);
+  }
+
+  return cachedAvailableColumns!;
+}
+
+/**
+ * Filter a translations object to only include keys that are actual DB columns.
+ */
+async function filterTranslationsToExistingColumns(
+  translations: Record<string, any>
+): Promise<Record<string, any>> {
+  const available = await getAvailableColumns();
+  const filtered: Record<string, any> = {};
+  for (const [key, value] of Object.entries(translations)) {
+    if (available.has(key.toLowerCase())) {
+      filtered[key] = value;
+    } else {
+      console.warn(`[EntryService] Skipping unknown column "${key}" (not in entries table)`);
+    }
+  }
+  return filtered;
+}
+
+/**
+ * Map a raw Supabase row to our Entry interface.
+ * Fields not in the DB will be undefined.
+ */
+function mapDbEntry(entry: any) {
+  return {
+    id: entry.id,
+    projectId: entry.projectid,
+    key: entry.key,
+    cn: entry.cn,
+    en: entry.en,
+    de: entry.de,
+    es: entry.es,
+    fi: entry.fi,
+    fr: entry.fr,
+    it: entry.it,
+    nl: entry.nl,
+    no: entry.no,
+    pl: entry.pl,
+    se: entry.se,
+    da: entry.da,
+    status: entry.status,
+    error: entry.error,
+    createdAt: entry.createdat || entry.created_at,
+    updatedAt: entry.updatedat || entry.updated_at,
+  };
+}
+
 export interface CreateEntryInput {
   projectId: string;
   key: string;
@@ -79,27 +192,21 @@ export class EntryService {
 
     let query = supabase.from('entries').select('*', { count: 'exact' });
 
-    // Apply project filter
     query = query.eq('projectid', projectId);
 
-    // Apply status filter
     if (status) {
       query = query.eq('status', status);
     }
 
-    // Apply search filter
     if (search) {
       if (language) {
-        // Search in specific language
         const languageField = this.getSearchField(language);
         query = query.or(`key.ilike.%${search}%,${languageField}.ilike.%${search}%`);
       } else {
-        // Search in key only for better performance
         query = query.ilike('key', `%${search}%`);
       }
     }
 
-    // Apply pagination
     query = query.order('updatedat', { ascending: false }).range(skip, skip + take - 1);
 
     const { data: entries, error, count } = await query;
@@ -108,30 +215,7 @@ export class EntryService {
       handleSupabaseError(error);
     }
 
-    // Map database fields to Entry interface
-    // Note: Supabase returns field names in lowercase without underscores
-    const mappedEntries =
-      entries?.map((entry) => ({
-        id: entry.id,
-        projectId: entry.projectid || entry.projectid,
-        key: entry.key,
-        cn: entry.cn,
-        en: entry.en,
-        de: entry.de,
-        es: entry.es,
-        fi: entry.fi,
-        fr: entry.fr,
-        it: entry.it,
-        nl: entry.nl,
-        no: entry.no,
-        pl: entry.pl,
-        se: entry.se,
-        da: entry.da,
-        status: entry.status,
-        error: entry.error,
-        createdAt: entry.createdat || entry.created_at,
-        updatedAt: entry.updatedat || entry.updated_at,
-      })) || [];
+    const mappedEntries = entries?.map((entry) => mapDbEntry(entry)) || [];
 
     return {
       entries: mappedEntries,
@@ -156,34 +240,13 @@ export class EntryService {
       handleSupabaseError(error);
     }
 
-    return {
-      id: entry.id,
-      projectId: entry.projectid || entry.projectid,
-      key: entry.key,
-      cn: entry.cn,
-      en: entry.en,
-      de: entry.de,
-      es: entry.es,
-      fi: entry.fi,
-      fr: entry.fr,
-      it: entry.it,
-      nl: entry.nl,
-      no: entry.no,
-      pl: entry.pl,
-      se: entry.se,
-      da: entry.da,
-      status: entry.status,
-      error: entry.error,
-      createdAt: entry.createdat || entry.created_at,
-      updatedAt: entry.updatedat || entry.updated_at,
-    };
+    return mapDbEntry(entry);
   }
 
   /**
    * Create a new entry
    */
   async createEntry(input: CreateEntryInput): Promise<Entry> {
-    // Verify project exists
     const { data: project, error: fetchError } = await supabase
       .from('projects')
       .select('id')
@@ -198,11 +261,15 @@ export class EntryService {
       throw new Error('PROJECT_NOT_FOUND');
     }
 
-    // Create entry
+    // Filter translations to only include columns that exist in the DB
+    const safeTranslations = await filterTranslationsToExistingColumns(
+      Object.fromEntries(Object.entries(input.translations).filter(([_, v]) => v !== undefined))
+    );
+
     const insertData: Record<string, any> = {
       projectid: input.projectId,
       key: input.key,
-      ...Object.fromEntries(Object.entries(input.translations).filter(([_, v]) => v !== undefined)),
+      ...safeTranslations,
       status: 'NEW',
     };
 
@@ -216,34 +283,13 @@ export class EntryService {
       handleSupabaseError(error);
     }
 
-    return {
-      id: entry.id,
-      projectId: entry.projectid || entry.projectid,
-      key: entry.key,
-      cn: entry.cn,
-      en: entry.en,
-      de: entry.de,
-      es: entry.es,
-      fi: entry.fi,
-      fr: entry.fr,
-      it: entry.it,
-      nl: entry.nl,
-      no: entry.no,
-      pl: entry.pl,
-      se: entry.se,
-      da: entry.da,
-      status: entry.status,
-      error: entry.error,
-      createdAt: entry.createdat || entry.created_at,
-      updatedAt: entry.updatedat || entry.updated_at,
-    };
+    return mapDbEntry(entry);
   }
 
   /**
    * Update an entry
    */
   async updateEntry(projectId: string, uuid: string, input: UpdateEntryInput): Promise<Entry> {
-    // Verify entry exists
     const { data: existing, error: fetchError } = await supabase
       .from('entries')
       .select('id')
@@ -259,18 +305,22 @@ export class EntryService {
       throw new Error('ENTRY_NOT_FOUND');
     }
 
-    // Prepare update data
-    const updateData: any = {};
+    // Prepare update data — filter translations to only columns that exist
+    const updateData: Record<string, any> = {};
     if (input.key !== undefined) updateData.key = input.key;
     if (input.translations !== undefined) {
-      Object.keys(input.translations).forEach((lang) => {
-        updateData[lang] = input.translations[lang];
-      });
+      const available = await getAvailableColumns();
+      for (const lang of Object.keys(input.translations)) {
+        if (available.has(lang.toLowerCase())) {
+          updateData[lang] = input.translations[lang];
+        } else {
+          console.warn(`[EntryService] Skipping unknown column "${lang}" in update`);
+        }
+      }
     }
     if (input.status !== undefined) updateData.status = input.status;
     if (input.error !== undefined) updateData.error = input.error;
 
-    // Update entry
     const { data: entry, error } = await supabase
       .from('entries')
       .update(updateData)
@@ -283,34 +333,13 @@ export class EntryService {
       handleSupabaseError(error);
     }
 
-    return {
-      id: entry.id,
-      projectId: entry.projectid || entry.projectid,
-      key: entry.key,
-      cn: entry.cn,
-      en: entry.en,
-      de: entry.de,
-      es: entry.es,
-      fi: entry.fi,
-      fr: entry.fr,
-      it: entry.it,
-      nl: entry.nl,
-      no: entry.no,
-      pl: entry.pl,
-      se: entry.se,
-      da: entry.da,
-      status: entry.status,
-      error: entry.error,
-      createdAt: entry.createdat || entry.created_at,
-      updatedAt: entry.updatedat || entry.updated_at,
-    };
+    return mapDbEntry(entry);
   }
 
   /**
    * Delete an entry
    */
   async deleteEntry(projectId: string, uuid: string) {
-    // Verify entry exists
     const { data: existing, error: fetchError } = await supabase
       .from('entries')
       .select('id')
@@ -326,7 +355,6 @@ export class EntryService {
       throw new Error('ENTRY_NOT_FOUND');
     }
 
-    // Delete entry
     const { error } = await supabase
       .from('entries')
       .delete()
@@ -344,7 +372,6 @@ export class EntryService {
   async bulkUpdate(projectId: string, input: BulkUpdateInput) {
     const { uuids, updates } = input;
 
-    // Verify all entries exist and belong to project
     const { data: entries, error: fetchError } = await supabase
       .from('entries')
       .select('id')
@@ -359,17 +386,16 @@ export class EntryService {
       throw new Error('SOME_ENTRIES_NOT_FOUND');
     }
 
-    // Prepare update data
-    const updateData: any = {};
+    const updateData: Record<string, any> = {};
     if (updates.translations) {
+      // Note: for bulk we accept the risk — skip column filtering for performance
       Object.keys(updates.translations).forEach((lang) => {
-        updateData[lang] = updates.translations[lang];
+        updateData[lang] = updates.translations![lang];
       });
     }
     if (updates.status !== undefined) updateData.status = updates.status;
     if (updates.error !== undefined) updateData.error = updates.error;
 
-    // Update all entries
     const { error } = await supabase
       .from('entries')
       .update(updateData)
@@ -390,7 +416,6 @@ export class EntryService {
    * Bulk delete entries
    */
   async bulkDelete(projectId: string, uuids: string[]) {
-    // Verify all entries exist and belong to project
     const { data: entries, error: fetchError } = await supabase
       .from('entries')
       .select('id')
@@ -405,7 +430,6 @@ export class EntryService {
       throw new Error('SOME_ENTRIES_NOT_FOUND');
     }
 
-    // Delete entries
     const { error } = await supabase
       .from('entries')
       .delete()
@@ -426,7 +450,6 @@ export class EntryService {
    * Import entries from Excel data
    */
   async importEntries(projectId: string, entries: Array<CreateEntryInput>) {
-    // Verify project exists
     const { data: project, error: fetchError } = await supabase
       .from('projects')
       .select('id')
@@ -441,10 +464,13 @@ export class EntryService {
       throw new Error('PROJECT_NOT_FOUND');
     }
 
-    // Prepare entries for insertion
+    // Filter translations to only columns that exist in the DB
+    const available = await getAvailableColumns();
     const entriesToInsert = entries.map((entry) => {
       const translations = Object.fromEntries(
-        Object.entries(entry.translations).filter(([_, v]) => v !== undefined && v !== null)
+        Object.entries(entry.translations).filter(
+          ([k, v]) => v !== undefined && v !== null && available.has(k.toLowerCase())
+        )
       );
       return {
         projectid: projectId,
@@ -454,7 +480,6 @@ export class EntryService {
       };
     });
 
-    // Insert all entries
     const { data: createdEntries, error } = await supabase
       .from('entries')
       .insert(entriesToInsert)
@@ -464,28 +489,7 @@ export class EntryService {
       handleSupabaseError(error);
     }
 
-    // Map database fields to Entry interface
-    const mappedEntries = createdEntries.map((entry) => ({
-      id: entry.id,
-      projectId: entry.projectid || entry.projectid,
-      key: entry.key,
-      cn: entry.cn,
-      en: entry.en,
-      de: entry.de,
-      es: entry.es,
-      fi: entry.fi,
-      fr: entry.fr,
-      it: entry.it,
-      nl: entry.nl,
-      no: entry.no,
-      pl: entry.pl,
-      se: entry.se,
-      da: entry.da,
-      status: entry.status,
-      error: entry.error,
-      createdAt: entry.createdat || entry.created_at,
-      updatedAt: entry.updatedat || entry.updated_at,
-    }));
+    const mappedEntries = createdEntries.map((entry) => mapDbEntry(entry));
 
     return {
       count: mappedEntries.length,
@@ -498,19 +502,16 @@ export class EntryService {
    * Get entry statistics for a project
    */
   async getEntryStats(projectId: string): Promise<EntryStats> {
-    // Get total count
     const { count: total } = await supabase
       .from('entries')
       .select('*', { count: 'exact', head: true })
       .eq('projectid', projectId);
 
-    // Get counts by status
     const { data: byStatus } = await supabase
       .from('entries')
       .select('status, count')
       .eq('projectid', projectId);
 
-    // Convert to Record format
     const stats: Record<string, number> = {};
     byStatus?.forEach((item) => {
       if (item.status) {

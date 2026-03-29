@@ -96,7 +96,7 @@ function ExportDownload() {
 
     try {
       setIsLoadingEntries(true);
-      const response = await entryApi.getEntries(selectedProjectId);
+      const response = await entryApi.getEntries(selectedProjectId, { page: 1, limit: 99999 });
       if (response.success && response.data) {
         const entryList =
           (response.data as any)?.entries ||

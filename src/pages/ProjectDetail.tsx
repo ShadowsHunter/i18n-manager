@@ -379,20 +379,28 @@ function ProjectDetail() {
     setExportError(null);
   };
 
-  // 导出条目 - 每语言导出一个独立文件并打包为ZIP
+  // 导出条目 - 获取全部条目后导出，每语言导出一个独立文件并打包为ZIP
   const handleExport = async () => {
-    if (filteredEntries.length === 0) {
-      setExportError('No entries to export');
-      return;
-    }
+    if (!projectId) return;
 
     setIsExporting(true);
     setExportError(null);
     try {
+      // 获取全部条目（不分页）
+      const allEntriesResponse = await entryApi.getEntries(projectId, { page: 1, limit: 99999 });
+      if (!allEntriesResponse.success || !allEntriesResponse.data) {
+        throw new Error(allEntriesResponse.error?.message || 'Failed to fetch all entries');
+      }
+      const allEntries = allEntriesResponse.data.entries || [];
+      if (allEntries.length === 0) {
+        setExportError('No entries to export');
+        setIsExporting(false);
+        return;
+      }
+
       // 定义支持的语言列表
-      const languages = ['cn', 'en', 'de', 'es', 'fi', 'fr', 'it', 'nl', 'no', 'pl', 'se'];
+      const languages = ['cn', 'en', 'de', 'es', 'fi', 'fr', 'it', 'nl', 'no', 'pl', 'se', 'da'];
       const zip = new JSZip();
-      // 创建一个虚拟文件系统来存储各个语言文件
       const folder = zip.folder('translations');
       if (!folder) {
         throw new Error('Failed to create folder in ZIP');
@@ -400,12 +408,16 @@ function ProjectDetail() {
       // 为每个语言创建一个独立的JSON文件
       languages.forEach((lang) => {
         const langData: Record<string, string> = {};
-        filteredEntries.forEach((entry) => {
-          if (entry[lang as keyof Entry]) {
-            langData[entry.key] = entry[lang as keyof Entry] || '';
+        allEntries.forEach((entry) => {
+          const value = entry[lang as keyof Entry];
+          if (typeof value === 'string' && value) {
+            langData[entry.key] = value;
           }
         });
-        folder.file(`${lang}.json`, JSON.stringify(langData, null, 2));
+        // 只有当该语言有数据时才添加文件
+        if (Object.keys(langData).length > 0) {
+          folder.file(`${lang}.json`, JSON.stringify(langData, null, 2));
+        }
       });
       // 生成ZIP文件
       const content = await zip.generateAsync({ type: 'blob' });
@@ -413,7 +425,7 @@ function ProjectDetail() {
       const url = URL.createObjectURL(content);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `translations_${new Date().toISOString().split('T')[0]}.zip`;
+      link.download = `${project.name}_${new Date().toISOString().split('T')[0]}.zip`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -423,7 +435,7 @@ function ProjectDetail() {
       // 显示成功提示
       toast.showToast({
         type: 'success',
-        message: `Successfully exported ${languages.length} language files as ZIP`,
+        message: `Successfully exported ${allEntries.length} entries (${languages.length} languages)`,
       });
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : '导出失败';
