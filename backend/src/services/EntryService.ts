@@ -185,6 +185,45 @@ export interface EntryStats {
  */
 export class EntryService {
   /**
+   * Get ALL entries for a project (no pagination limit).
+   * Supabase PostgREST has a default 1000-row limit per query,
+   * so we paginate internally to fetch everything.
+   */
+  async getAllEntries(projectId: string): Promise<Entry[]> {
+    const pageSize = 500;
+    let allEntries: Entry[] = [];
+    let hasMore = true;
+    let skip = 0;
+
+    while (hasMore) {
+      const { data: entries, error } = await supabase
+        .from('entries')
+        .select('*')
+        .eq('projectid', projectId)
+        .order('updatedat', { ascending: false })
+        .range(skip, skip + pageSize - 1);
+
+      if (error) {
+        handleSupabaseError(error);
+      }
+
+      if (!entries || entries.length === 0) {
+        hasMore = false;
+        break;
+      }
+
+      allEntries.push(...entries.map(mapDbEntry));
+      skip += pageSize;
+
+      if (entries.length < pageSize) {
+        hasMore = false;
+      }
+    }
+
+    return allEntries;
+  }
+
+  /**
    * Get all entries for a project with filters and pagination
    */
   async getEntries(projectId: string, filters?: EntryFilters): Promise<PaginatedEntries> {
@@ -466,7 +505,7 @@ export class EntryService {
 
     // Filter translations to only columns that exist in the DB
     const available = await getAvailableColumns();
-    const entriesToInsert = entries.map((entry) => {
+    const entriesToUpsert = entries.map((entry) => {
       const translations = Object.fromEntries(
         Object.entries(entry.translations).filter(
           ([k, v]) => v !== undefined && v !== null && available.has(k.toLowerCase())
@@ -480,16 +519,25 @@ export class EntryService {
       };
     });
 
-    const { data: createdEntries, error } = await supabase
+    if (entriesToUpsert.length === 0) {
+      return {
+        count: 0,
+        entries: [],
+        message: 'No entries to import',
+      };
+    }
+
+    // Upsert entries by key — if key already exists in this project, update it
+    const { data: upsertedEntries, error } = await supabase
       .from('entries')
-      .insert(entriesToInsert)
+      .upsert(entriesToUpsert, { onConflict: 'projectid,key' })
       .select();
 
     if (error) {
       handleSupabaseError(error);
     }
 
-    const mappedEntries = createdEntries.map((entry) => mapDbEntry(entry));
+    const mappedEntries = upsertedEntries.map((entry) => mapDbEntry(entry));
 
     return {
       count: mappedEntries.length,

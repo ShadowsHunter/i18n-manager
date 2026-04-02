@@ -15,6 +15,33 @@ import { randomUUID } from 'crypto';
 
 const router = Router();
 
+// GET /api/v1/projects/:projectId/entries/all - Get ALL entries (no pagination limit)
+router.get('/:projectId/entries/all', async (req: Request, res: Response) => {
+  try {
+    const { projectId } = req.params;
+
+    const allEntries = await entryService.getAllEntries(projectId);
+
+    return sendResponse(
+      res,
+      successResponse({
+        entries: allEntries,
+        total: allEntries.length,
+      })
+    );
+  } catch (error) {
+    console.error('Error fetching all entries:', error);
+    return sendResponse(
+      res,
+      errorResponse(
+        error instanceof Error ? error.message : 'Failed to fetch all entries',
+        ErrorCode.INTERNAL_ERROR
+      ),
+      500
+    );
+  }
+});
+
 // GET /api/v1/projects/:projectId/entries - List entries
 router.get('/:projectId/entries', async (req: Request, res: Response) => {
   try {
@@ -98,7 +125,7 @@ router.post('/:projectId/entries', async (req: Request, res: Response) => {
       );
     }
 
-    // Generate key if not provided
+    // Generate key if not provided (only for single entry creation)
     const entryKey = key || randomUUID();
 
     const newEntry = await entryService.createEntry({
@@ -138,10 +165,10 @@ router.post('/:projectId/entries', async (req: Request, res: Response) => {
 router.put('/:projectId/entries/:uuid', async (req: Request, res: Response) => {
   try {
     const { projectId, uuid } = req.params;
-    const { key, cn, en, de, es, fi, fr, it, nl, no, pl, se, da, status } = req.body;
+    const { cn, en, de, es, fi, fr, it, nl, no, pl, se, da, status } = req.body;
 
+    // Note: key is NOT included in update — key is read-only after creation
     const updatedEntry = await entryService.updateEntry(projectId, uuid, {
-      key: key || undefined,
       translations: {
         cn: cn !== undefined ? cn : undefined,
         en: en !== undefined ? en : undefined,

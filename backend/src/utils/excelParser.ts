@@ -94,11 +94,13 @@ export const parseExcelFile = (buffer: Buffer, projectId: string): ParseResult =
       const row = data[i];
 
       try {
-        // Extract Key - if empty, generate UUID
+        // Extract Key - key is the unique identifier, MUST NOT be empty
         let keyValue = row[keyIndex]?.toString().trim();
         if (!keyValue) {
-          // 如果 key 为空，则生成 UUID
-          keyValue = crypto.randomUUID();
+          errors.push(
+            `Row ${i + 1}: Key is empty - key is the unique identifier and must not be empty`
+          );
+          continue;
         }
 
         // Extract translations for each language
