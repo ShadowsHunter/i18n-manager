@@ -198,6 +198,18 @@ export const entryApi = {
   },
 
   /**
+   * 获取项目的全部条目（无分页限制，通过后端分页循环获取所有数据）
+   */
+  getAllEntries: async (
+    projectId: string
+  ): Promise<ApiResponse<{ entries: Entry[]; total: number }>> => {
+    const response = await apiClient.get<ApiResponse<{ entries: Entry[]; total: number }>>(
+      `/projects/${projectId}/entries/all`
+    );
+    return response.data;
+  },
+
+  /**
    * 获取条目详情
    */
   getEntry: async (projectId: string, id: string): Promise<ApiResponse<Entry>> => {
