@@ -96,13 +96,9 @@ function ExportDownload() {
 
     try {
       setIsLoadingEntries(true);
-      const response = await entryApi.getEntries(selectedProjectId, { page: 1, limit: 99999 });
+      const response = await entryApi.getAllEntries(selectedProjectId);
       if (response.success && response.data) {
-        const entryList =
-          (response.data as any)?.entries ||
-          (response.data as any)?.data ||
-          (Array.isArray(response.data) ? response.data : []);
-        setEntries(Array.isArray(entryList) ? entryList : []);
+        setEntries(response.data.entries || []);
       }
     } catch (err) {
       console.error('Failed to load entries:', err);
@@ -172,15 +168,10 @@ function ExportDownload() {
         const langData: Record<string, string> = {};
         entries.forEach((entry) => {
           const value = entry[lang as keyof Entry];
-          if (typeof value === 'string' && value) {
-            langData[entry.key] = value;
-          }
+          langData[entry.key] = typeof value === 'string' ? value : '';
         });
-
-        // 只有当该语言有数据时才添加文件
-        if (Object.keys(langData).length > 0) {
-          folder.file(`${lang}.json`, JSON.stringify(langData, null, 2));
-        }
+        // Always add the file for every language, even with empty values
+        folder.file(`${lang}.json`, JSON.stringify(langData, null, 2));
       });
 
       // 生成 ZIP 文件

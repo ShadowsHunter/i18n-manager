@@ -386,8 +386,8 @@ function ProjectDetail() {
     setIsExporting(true);
     setExportError(null);
     try {
-      // 获取全部条目（不分页）
-      const allEntriesResponse = await entryApi.getEntries(projectId, { page: 1, limit: 99999 });
+      // 获取全部条目（不分页），使用getAllEntries绕过Supabase 1000行限制
+      const allEntriesResponse = await entryApi.getAllEntries(projectId);
       if (!allEntriesResponse.success || !allEntriesResponse.data) {
         throw new Error(allEntriesResponse.error?.message || 'Failed to fetch all entries');
       }
@@ -410,14 +410,10 @@ function ProjectDetail() {
         const langData: Record<string, string> = {};
         allEntries.forEach((entry) => {
           const value = entry[lang as keyof Entry];
-          if (typeof value === 'string' && value) {
-            langData[entry.key] = value;
-          }
+          langData[entry.key] = typeof value === 'string' ? value : '';
         });
-        // 只有当该语言有数据时才添加文件
-        if (Object.keys(langData).length > 0) {
-          folder.file(`${lang}.json`, JSON.stringify(langData, null, 2));
-        }
+        // Always add the file for every language, empty strings for missing values
+        folder.file(`${lang}.json`, JSON.stringify(langData, null, 2));
       });
       // 生成ZIP文件
       const content = await zip.generateAsync({ type: 'blob' });
@@ -842,9 +838,9 @@ function ProjectDetail() {
             <div>
               <Input
                 id="edit-key"
-                label="Key"
+                label="Key (read-only)"
                 value={editingEntry.key}
-                onChange={(e) => setEditingEntry({ ...editingEntry, key: e.target.value })}
+                readOnly
                 required
               />
             </div>

@@ -224,7 +224,27 @@ function UploadExcel() {
             if (!row || row.length === 0) continue;
 
             const key = row[keyIndex]?.toString().trim();
-            if (!key) continue;
+            if (!key) {
+              // Key is the unique identifier and must not be empty - show error instead of skipping
+              const emptyKeyEntry: PreviewEntry = {
+                key: `__empty_key_row_${i}__`,
+                cn: '',
+                en: '',
+                de: '',
+                es: '',
+                fi: '',
+                fr: '',
+                it: '',
+                nl: '',
+                no: '',
+                pl: '',
+                se: '',
+                status: 'error',
+                error: 'Key is empty - key is the unique identifier and must not be empty',
+              };
+              entries.push(emptyKeyEntry);
+              continue;
+            }
 
             const entry: PreviewEntry = {
               key,
