@@ -240,9 +240,30 @@ export class EntryService {
     if (search) {
       if (language) {
         const languageField = this.getSearchField(language);
-        query = query.or(`key.ilike.%${search}%,${languageField}.ilike.%${search}%`);
+        query = query.or('key.ilike.%' + search + '%,' + languageField + '.ilike.%' + search + '%');
       } else {
-        query = query.ilike('key', `%${search}%`);
+        // Search across ALL text fields when no specific language is specified
+        const allFields = [
+          'key',
+          'cn',
+          'en',
+          'de',
+          'es',
+          'fi',
+          'fr',
+          'it',
+          'nl',
+          'no',
+          'pl',
+          'se',
+          'da',
+        ];
+        const conditions = allFields
+          .map(function (f) {
+            return f + '.ilike.%' + search + '%';
+          })
+          .join(',');
+        query = query.or(conditions);
       }
     }
 

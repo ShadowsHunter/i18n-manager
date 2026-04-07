@@ -40,6 +40,7 @@ function ProjectDetail() {
 
   // 搜索和过滤
   const [searchTerm, setSearchTerm] = useState('');
+  const [appliedSearchTerm, setAppliedSearchTerm] = useState('');
   const [filter, setFilter] = useState<'all' | 'NEW' | 'MODIFIED' | 'TRANSLATED' | 'REVIEWED'>(
     'all'
   );
@@ -71,9 +72,18 @@ function ProjectDetail() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [newEntry, setNewEntry] = useState({
     key: '',
+    cn: '',
     en: '',
     de: '',
+    es: '',
+    fi: '',
     fr: '',
+    it: '',
+    nl: '',
+    no: '',
+    pl: '',
+    se: '',
+    da: '',
   });
   const [createError, setCreateError] = useState<string | null>(null);
 
@@ -122,6 +132,13 @@ function ProjectDetail() {
     }
   }, [projectId]);
 
+  // 当提交的搜索词或状态过滤改变时，重新从第一页加载（触发后端搜索）
+  useEffect(() => {
+    if (!projectId) return;
+    setCurrentPage(1);
+    loadData(1, pageSize);
+  }, [appliedSearchTerm, filter]);
+
   const loadData = async (page: number = 1, size: number = pageSize) => {
     if (!projectId) return;
 
@@ -129,10 +146,15 @@ function ProjectDetail() {
     setError(null);
 
     try {
-      // 并行加载项目和条目
+      // 并行加载项目和条目（把 searchTerm 和 filter 传给后端做全项目搜索）
       const [projectResponse, entriesResponse] = await Promise.all([
         projectApi.getProject(projectId),
-        entryApi.getEntries(projectId, { page, limit: size }),
+        entryApi.getEntries(projectId, {
+          page,
+          limit: size,
+          ...(appliedSearchTerm ? { search: appliedSearchTerm } : {}),
+          ...(filter !== 'all' ? { filter } : {}),
+        }),
       ]);
 
       if (projectResponse.success && projectResponse.data) {
@@ -205,9 +227,18 @@ function ProjectDetail() {
         // 重置表单
         setNewEntry({
           key: '',
+          cn: '',
           en: '',
           de: '',
+          es: '',
+          fi: '',
           fr: '',
+          it: '',
+          nl: '',
+          no: '',
+          pl: '',
+          se: '',
+          da: '',
         });
         // 显示成功提示
         toast.showToast({
@@ -441,19 +472,9 @@ function ProjectDetail() {
     }
   };
 
-  // 过滤和排序条目
+  // 过滤和排序条目（搜索和状态过滤已由后端处理，这里只做语言过滤和排序）
   const filteredEntries = entries
     .filter((entry) => {
-      // 搜索过滤
-      const matchesSearch =
-        entry.key?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        entry.en?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        entry.de?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        entry.fr?.toLowerCase().includes(searchTerm.toLowerCase());
-
-      // 状态过滤
-      const matchesFilter = filter === 'all' || entry.status === filter;
-
       // 语言过滤 - 至少一个选中的语言有内容
       const matchesLanguage =
         languageFilter.length === 0 ||
@@ -462,7 +483,7 @@ function ProjectDetail() {
           return langValue && langValue.trim().length > 0;
         });
 
-      return matchesSearch && matchesFilter && matchesLanguage;
+      return matchesLanguage;
     })
     .sort((a, b) => {
       // 排序逻辑
@@ -565,9 +586,14 @@ function ProjectDetail() {
           <div className="flex gap-4 mb-4">
             <Input
               type="text"
-              placeholder="Search entries..."
+              placeholder="Search entries... (press Enter to search)"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  setAppliedSearchTerm(searchTerm);
+                }
+              }}
               className="flex-1"
             />
             <select
@@ -608,6 +634,9 @@ function ProjectDetail() {
 
           {/* 导出、上传和批量删除按钮 */}
           <div className="flex gap-2">
+            <Button variant="primary" size="sm" onClick={() => setShowCreateModal(true)}>
+              + Add Entry
+            </Button>
             <Button
               variant="secondary"
               size="sm"
@@ -792,32 +821,123 @@ function ProjectDetail() {
 
             <div>
               <Input
-                id="en"
+                id="create-cn"
+                label="Chinese (CN)"
+                value={newEntry.cn}
+                onChange={(e) => setNewEntry({ ...newEntry, cn: e.target.value })}
+              />
+            </div>
+
+            <div>
+              <Input
+                id="create-en"
                 label="English (EN)"
                 value={newEntry.en}
                 onChange={(e) => setNewEntry({ ...newEntry, en: e.target.value })}
-                placeholder="Welcome"
-                required
               />
             </div>
+
+            <div>
+              <Input
+                id="create-de"
+                label="German (DE)"
+                value={newEntry.de}
+                onChange={(e) => setNewEntry({ ...newEntry, de: e.target.value })}
+              />
+            </div>
+
+            <div>
+              <Input
+                id="create-da"
+                label="Danish (DA)"
+                value={newEntry.da}
+                onChange={(e) => setNewEntry({ ...newEntry, da: e.target.value })}
+              />
+            </div>
+
+            <div>
+              <Input
+                id="create-es"
+                label="Spanish (ES)"
+                value={newEntry.es}
+                onChange={(e) => setNewEntry({ ...newEntry, es: e.target.value })}
+              />
+            </div>
+
+            <div>
+              <Input
+                id="create-fi"
+                label="Finnish (FI)"
+                value={newEntry.fi}
+                onChange={(e) => setNewEntry({ ...newEntry, fi: e.target.value })}
+              />
+            </div>
+
+            <div>
+              <Input
+                id="create-fr"
+                label="French (FR)"
+                value={newEntry.fr}
+                onChange={(e) => setNewEntry({ ...newEntry, fr: e.target.value })}
+              />
+            </div>
+
+            <div>
+              <Input
+                id="create-it"
+                label="Italian (IT)"
+                value={newEntry.it}
+                onChange={(e) => setNewEntry({ ...newEntry, it: e.target.value })}
+              />
+            </div>
+
+            <div>
+              <Input
+                id="create-nl"
+                label="Dutch (NL)"
+                value={newEntry.nl}
+                onChange={(e) => setNewEntry({ ...newEntry, nl: e.target.value })}
+              />
+            </div>
+
+            <div>
+              <Input
+                id="create-no"
+                label="Norwegian (NO)"
+                value={newEntry.no}
+                onChange={(e) => setNewEntry({ ...newEntry, no: e.target.value })}
+              />
+            </div>
+
+            <div>
+              <Input
+                id="create-pl"
+                label="Polish (PL)"
+                value={newEntry.pl}
+                onChange={(e) => setNewEntry({ ...newEntry, pl: e.target.value })}
+              />
+            </div>
+
+            <div>
+              <Input
+                id="create-se"
+                label="Swedish (SE)"
+                value={newEntry.se}
+                onChange={(e) => setNewEntry({ ...newEntry, se: e.target.value })}
+              />
+            </div>
+
             <div className="flex gap-3">
               <Button
                 type="button"
                 variant="secondary"
-                onClick={() => {
-                  setShowEditModal(false);
-                  setEditingEntryId(null);
-                }}
-                disabled={isEditing}
+                onClick={() => setShowCreateModal(false)}
+                disabled={isCreating}
               >
                 Cancel
               </Button>
-              <Button
-                type="submit"
-                variant="primary"
-                disabled={isEditing || !editingEntry.key || !editingEntry.en}
-              >
-                {isEditing ? 'Updating...' : 'Update Entry'}
+              <Button type="submit" variant="primary" disabled={isCreating || !newEntry.key.trim()}>
+                {isCreating ? 'Creating...' : 'Create Entry'}
               </Button>
             </div>
           </form>
