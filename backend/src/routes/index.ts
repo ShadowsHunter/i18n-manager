@@ -13,7 +13,7 @@ export const registerRoutes = (app: Application): void => {
   app.use('/api/v1/projects', projectRoutes);
   app.use('/api/v1/projects', entryRoutes);
 
-  app.use('/api/v1/exports', exportRoutes);
+  app.use('/api/v1/exports', optionalAuthenticate, exportRoutes);
   app.use('/api/v1/api-keys', apiKeyRoutes);
   app.use('/api/v1/auth', authRoutes);
   // Root API endpoint

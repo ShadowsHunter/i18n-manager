@@ -74,7 +74,7 @@ export class ExportService {
     let query = supabase.from('exports').select('*', { count: 'exact' });
 
     // Apply project filter
-    query = query.eq('project_id', projectId);
+    query = query.eq('projectid', projectId);
 
     // Apply status filter
     if (status) {
@@ -82,7 +82,7 @@ export class ExportService {
     }
 
     // Apply pagination
-    query = query.order('created_at', { ascending: false }).range(skip, skip + take - 1);
+    query = query.order('createdat', { ascending: false }).range(skip, skip + take - 1);
 
     const { data: exports, error, count } = await query;
 
@@ -94,15 +94,15 @@ export class ExportService {
     const mappedExports =
       exports?.map((exp) => ({
         id: exp.id,
-        projectId: exp.project_id,
+        projectId: exp.projectid,
         platforms: exp.platforms,
         languages: exp.languages,
         url: exp.url,
         status: exp.status,
-        errorMessage: exp.error_message,
-        createdBy: exp.created_by,
-        createdAt: exp.created_at,
-        completedAt: exp.completed_at,
+        errorMessage: exp.errormessage,
+        createdBy: exp.createdby,
+        createdAt: exp.createdat,
+        completedAt: exp.completedat,
       })) || [];
 
     return {
@@ -173,11 +173,11 @@ export class ExportService {
       .from('exports')
       .insert([
         {
-          project_id: input.projectId,
+          projectid: input.projectId,
           platforms: input.platforms,
           languages: input.languages,
           status: 'PENDING',
-          created_by: input.userId,
+          createdby: input.userId,
         },
       ])
       .select()
@@ -189,15 +189,15 @@ export class ExportService {
 
     return {
       id: exp.id,
-      projectId: exp.project_id,
+      projectId: exp.projectid,
       platforms: exp.platforms,
       languages: exp.languages,
       url: exp.url,
       status: exp.status,
-      errorMessage: exp.error_message,
-      createdBy: exp.created_by,
-      createdAt: exp.created_at,
-      completedAt: exp.completed_at,
+      errorMessage: exp.errormessage,
+      createdBy: exp.createdby,
+      createdAt: exp.createdat,
+      completedAt: exp.completedat,
     };
   }
 
@@ -217,12 +217,12 @@ export class ExportService {
     }
 
     if (input.errorMessage !== undefined) {
-      updateData.error_message = input.errorMessage;
+      updateData.errormessage = input.errorMessage;
     }
 
     // If status is COMPLETED, set completed_at timestamp
     if (input.status === 'COMPLETED') {
-      updateData.completed_at = new Date().toISOString();
+      updateData.completedat = new Date().toISOString();
     }
 
     // Update export
@@ -239,15 +239,15 @@ export class ExportService {
 
     return {
       id: exp.id,
-      projectId: exp.project_id,
+      projectId: exp.projectid,
       platforms: exp.platforms,
       languages: exp.languages,
       url: exp.url,
       status: exp.status,
-      errorMessage: exp.error_message,
-      createdBy: exp.created_by,
-      createdAt: exp.created_at,
-      completedAt: exp.completed_at,
+      errorMessage: exp.errormessage,
+      createdBy: exp.createdby,
+      createdAt: exp.createdat,
+      completedAt: exp.completedat,
     };
   }
 
@@ -276,13 +276,13 @@ export class ExportService {
     const { count: total } = await supabase
       .from('exports')
       .select('*', { count: 'exact', head: true })
-      .eq('project_id', projectId);
+      .eq('projectid', projectId);
 
     // Get status counts
     const { data: statusCounts } = await supabase
       .from('exports')
       .select('status, count')
-      .eq('project_id', projectId);
+      .eq('projectid', projectId);
 
     // Convert to Record format
     const stats: Record<string, number> = {};

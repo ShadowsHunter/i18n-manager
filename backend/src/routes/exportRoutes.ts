@@ -183,7 +183,7 @@ router.post('/:projectId/export', async (req: Request, res: Response) => {
 
     const newExport = await exportService.createExport({
       projectId,
-      platforms: platforms.map((p: string) => p),
+      platforms: platforms.map((p: string) => p.toUpperCase()),
       languages: languages.map((l: string) => l.toUpperCase()),
       userId,
     });
